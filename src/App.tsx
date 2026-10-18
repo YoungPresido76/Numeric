@@ -1,22 +1,18 @@
-import { useState, type ReactElement } from 'react';
+import { useState, type CSSProperties, type ReactElement } from 'react';
+import { AlertStack } from './components/AlertStack';
 import { BuildingsPanel } from './components/BuildingsPanel';
 import { CollapsePanel } from './components/CollapsePanel';
-import { dockItemCount, ExperimentDock } from './components/ExperimentDock';
 import { FabricPanel } from './components/FabricPanel';
+import { InfoFab, type SheetTab } from './components/InfoFab';
 import { IntroSequence } from './components/IntroSequence';
 import { LabPanel } from './components/LabPanel';
-import { NoticeBar } from './components/NoticeBar';
-import { NotebookStrip } from './components/NotebookStrip';
+import { NewsTicker } from './components/NewsTicker';
 import { OfflineModal } from './components/OfflineModal';
 import { Stage } from './components/Stage';
 import { SummaryModal } from './components/SummaryModal';
-import { SystemPanel } from './components/SystemPanel';
 import { TabBar, type TabId } from './components/TabBar';
-import { TearAlert } from './components/TearAlert';
-import { TutorialCard } from './components/TutorialCard';
 import { UpgradesPanel } from './components/UpgradesPanel';
 import { WaveBackground } from './components/WaveBackground';
-import { ZoneBanner } from './components/ZoneBanner';
 import { ZoneOverlay } from './components/ZoneOverlay';
 import { UPGRADES } from './game/data';
 import { canAffordAutobuyer } from './game/autobuyers';
@@ -29,7 +25,8 @@ import { TUTORIAL_STEPS } from './game/tutorial';
 import type { BuyAmount } from './game/types';
 import { useGame } from './hooks/useGame';
 
-const DOCK_CARD_PX = 84;
+/** Height of the news ticker, including the top safe-area inset. Alerts are stacked below it. */
+const ROOT_VARS = { '--ticker-h': 'calc(1.875rem + env(safe-area-inset-top, 0px))' } as CSSProperties;
 
 export default function App(): ReactElement {
   const { snapshot, actions } = useGame();
@@ -37,6 +34,7 @@ export default function App(): ReactElement {
   const zone = derived.zone;
   const [tab, setTab] = useState<TabId>('build');
   const [amount, setAmount] = useState<BuyAmount>(1);
+  const [sheet, setSheet] = useState<SheetTab | null>(null);
 
   const intensity = clamp(Math.log10(derived.psPerSecond + 1) / 12, 0, 1);
 
@@ -94,43 +92,34 @@ export default function App(): ReactElement {
         />
       );
       break;
-    case 'system':
-      panel = <SystemPanel snapshot={snapshot} actions={actions} />;
-      break;
   }
-
-  const dockPadding = dockItemCount(state) * DOCK_CARD_PX;
 
   return (
     <div
       data-zone={zone}
+      style={ROOT_VARS}
       className="zone-root relative isolate h-dvh w-full overflow-hidden bg-void text-slate-100"
     >
       <WaveBackground intensity={intensity} surging={state.surge.activeLeft > 0} zone={zone} />
       <ZoneOverlay zone={zone} />
 
       <div className="relative z-10 mx-auto flex h-full w-full max-w-md flex-col md:border-x md:border-white/10 md:bg-void/50">
-        <NoticeBar notice={snapshot.notice} saveStatus={snapshot.saveStatus} onDismiss={actions.dismissNotice} />
+        <NewsTicker notes={state.notes} onOpen={() => setSheet('log')} />
         <Stage snapshot={snapshot} onTap={actions.tap} onSurge={actions.surge} onResolve={actions.resolveWaveforms} />
-        <ZoneBanner zone={zone} lab={state.lab} />
-        <TearAlert state={state} onStitch={actions.stitch} />
-        <TutorialCard state={state} onSkip={actions.skipTutorial} />
-        <NotebookStrip notes={state.notes} />
 
-        <div className="relative min-h-0 flex-1">
-          <main
-            id="panel"
-            role="tabpanel"
-            aria-labelledby={`tab-${tab}`}
-            className="scroll-clean h-full overflow-y-auto overscroll-contain px-3 pt-1 pb-4"
-            style={{ paddingBottom: `${16 + dockPadding}px` }}
-          >
-            {panel}
-          </main>
-          <ExperimentDock state={state} onObserve={actions.observe} onNeutralize={actions.neutralize} />
-        </div>
+        <main
+          id="panel"
+          role="tabpanel"
+          aria-labelledby={`tab-${tab}`}
+          className="scroll-clean min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-1 pb-24"
+        >
+          {panel}
+        </main>
 
         <TabBar active={tab} onSelect={setTab} hintTab={hintTab} badges={badges} showFabric={showFabric} />
+
+        <AlertStack snapshot={snapshot} actions={actions} />
+        <InfoFab snapshot={snapshot} actions={actions} sheet={sheet} onSheet={setSheet} />
       </div>
 
       {state.introSeen ? null : <IntroSequence onDone={actions.finishIntro} />}
