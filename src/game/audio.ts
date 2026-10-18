@@ -1,4 +1,13 @@
-export type SfxName = 'tap' | 'buy' | 'upgrade' | 'surge' | 'collapse';
+export type SfxName =
+  | 'tap'
+  | 'buy'
+  | 'upgrade'
+  | 'surge'
+  | 'collapse'
+  | 'success'
+  | 'fail'
+  | 'alarm'
+  | 'blackhole';
 
 type OscType = 'sine' | 'triangle' | 'square' | 'sawtooth';
 
@@ -59,6 +68,21 @@ class SoundBoard {
       case 'collapse':
         this.tone(ctx, 900, now, 0.9, 'sine', 0.06, 90);
         this.tone(ctx, 90, now + 0.2, 0.9, 'triangle', 0.05, 540);
+        break;
+      case 'success':
+        this.tone(ctx, 587.33, now, 0.1, 'sine', 0.05);
+        this.tone(ctx, 880, now + 0.08, 0.16, 'sine', 0.05);
+        break;
+      case 'fail':
+        this.tone(ctx, 220, now, 0.28, 'triangle', 0.07, 110);
+        break;
+      case 'alarm':
+        this.tone(ctx, 440, now, 0.12, 'square', 0.03);
+        this.tone(ctx, 440, now + 0.2, 0.12, 'square', 0.03);
+        break;
+      case 'blackhole':
+        this.tone(ctx, 300, now, 1.6, 'sawtooth', 0.04, 40);
+        this.tone(ctx, 60, now + 0.3, 1.4, 'sine', 0.07, 30);
         break;
     }
   }

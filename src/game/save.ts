@@ -1,7 +1,33 @@
-import { SAVE_KEY, SAVE_VERSION, isUpgradeId } from './data';
-import { clampFinite } from './math';
+import {
+  GRANT_MILESTONES,
+  HISTORY_MAX_SAMPLES,
+  MAX_NOTES,
+  SAVE_KEY,
+  ZONES,
+  isUpgradeId,
+} from './data';
 import { createInitialState } from './engine';
-import type { GameState, Quad, SurgeState, UpgradeId } from './types';
+import { createHistory, createLab, createRunStats } from './lab';
+import { clamp, clampFinite } from './math';
+import type {
+  Experiment,
+  Failure,
+  GameState,
+  History,
+  HistorySample,
+  LabOutcome,
+  LabState,
+  NoteLine,
+  NoteTone,
+  ProjectTier,
+  Quad,
+  RunStats,
+  RunSummary,
+  SurgeState,
+  Triple,
+  UpgradeId,
+  Zone,
+} from './types';
 
 export type LoadResult =
   | { status: 'empty' }
@@ -13,6 +39,12 @@ export type ImportResult = { ok: true; state: GameState } | { ok: false; error: 
 
 const EXPORT_PREFIX = 'NUMERIC1:';
 const CORRUPT_BACKUP_KEY = `${SAVE_KEY}.corrupt`;
+/** Saves from the first prototype (no lab) are upgraded on load. */
+const READABLE_VERSIONS: readonly unknown[] = [1, 2];
+const NOTE_TONES: readonly NoteTone[] = ['info', 'good', 'warn', 'alert'];
+const OUTCOMES: readonly LabOutcome[] = ['published', 'blackHole'];
+const MAX_TEXT = 400;
+const MAX_LIST = 12;
 
 function getStorage(): Storage | null {
   try {
@@ -49,13 +81,175 @@ function readSurge(value: unknown): SurgeState {
   };
 }
 
+function readProjectTier(value: unknown): ProjectTier | null {
+  return value === 1 || value === 2 || value === 3 ? value : null;
+}
+
+function readZone(value: unknown): Zone {
+  return typeof value === 'string' && (ZONES as readonly string[]).includes(value)
+    ? (value as Zone)
+    : 'stable';
+}
+
+function readList(value: unknown, max: number): unknown[] {
+  return Array.isArray(value) ? (value as unknown[]).slice(0, max) : [];
+}
+
+function readRun(value: unknown): RunStats {
+  const src = isRecord(value) ? value : {};
+  return {
+    seconds: readNumber(src['seconds'], 0),
+    experiments: readCount(src['experiments']),
+    successes: readCount(src['successes']),
+    failures: readCount(src['failures']),
+    survived: readCount(src['survived']),
+    observed: readCount(src['observed']),
+    fundsLost: readNumber(src['fundsLost'], 0),
+    tapped: readNumber(src['tapped'], 0),
+    byTier: readQuad(src['byTier'], false),
+  };
+}
+
+function readSamples(value: unknown, max: number): HistorySample[] {
+  const samples: HistorySample[] = [];
+  for (const entry of readList(value, max)) {
+    if (!isRecord(entry)) continue;
+    samples.push({
+      ps: readNumber(entry['ps'], 0),
+      stab: clamp(readNumber(entry['stab'], 100), 0, 100),
+    });
+  }
+  return samples;
+}
+
+function readHistory(value: unknown): History {
+  const src = isRecord(value) ? value : {};
+  const base = createHistory();
+  return {
+    interval: readNumber(src['interval'], base.interval, 1),
+    acc: readNumber(src['acc'], 0),
+    samples: readSamples(src['samples'], HISTORY_MAX_SAMPLES),
+  };
+}
+
+function readNotes(value: unknown, fallback: NoteLine[]): NoteLine[] {
+  const notes: NoteLine[] = [];
+  const seen = new Set<number>();
+  for (const entry of readList(value, MAX_NOTES)) {
+    if (!isRecord(entry) || typeof entry['text'] !== 'string') continue;
+    const id = readCount(entry['id']);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const tone = NOTE_TONES.find((t) => t === entry['tone']) ?? 'info';
+    notes.push({ id, text: entry['text'].slice(0, MAX_TEXT), tone });
+  }
+  return notes.length > 0 ? notes : fallback;
+}
+
+function readLab(value: unknown, seed: number, notes: NoteLine[]): LabState {
+  const src = isRecord(value) ? value : {};
+  const base = createLab(seed, 1);
+  const stability = clamp(readNumber(src['stability'], base.stability), 0, 100);
+  const minStability = Math.min(stability, clamp(readNumber(src['minStability'], stability), 0, 100));
+
+  const experiments: Experiment[] = [];
+  const failures: Failure[] = [];
+  const usedIds = new Set<number>();
+  for (const entry of readList(src['experiments'], MAX_LIST)) {
+    if (!isRecord(entry)) continue;
+    const tier = readProjectTier(entry['tier']);
+    const id = readCount(entry['id']);
+    if (tier === null || usedIds.has(id)) continue;
+    usedIds.add(id);
+    experiments.push({ id, tier, age: readNumber(entry['age'], 0) });
+  }
+  for (const entry of readList(src['failures'], MAX_LIST)) {
+    if (!isRecord(entry)) continue;
+    const tier = readProjectTier(entry['tier']);
+    const id = readCount(entry['id']);
+    if (tier === null || usedIds.has(id)) continue;
+    usedIds.add(id);
+    failures.push({ id, tier, left: readNumber(entry['left'], 0) });
+  }
+
+  const spawnSource: unknown[] = Array.isArray(src['spawn']) ? (src['spawn'] as unknown[]) : [];
+  const spawn: Triple = [
+    readNumber(spawnSource[0], -1, -1),
+    readNumber(spawnSource[1], -1, -1),
+    readNumber(spawnSource[2], -1, -1),
+  ];
+
+  const recoverySource = isRecord(src['recovery']) ? src['recovery'] : null;
+  const recoveryTier = recoverySource ? readProjectTier(recoverySource['tier']) : null;
+  const recovery =
+    recoverySource && recoveryTier !== null
+      ? { tier: recoveryTier, depth: clamp(readNumber(recoverySource['depth'], 0), 0, 100) }
+      : null;
+
+  const highestId = Math.max(0, ...notes.map((n) => n.id), ...usedIds);
+  const rawRng = readNumber(src['rng'], seed);
+
+  return {
+    stability,
+    minStability,
+    experiments,
+    failures,
+    festering: readCount(src['festering']),
+    spawn,
+    grace: readNumber(src['grace'], -1, -1),
+    neutralizes: readCount(src['neutralizes']),
+    recovery,
+    lastCause: readProjectTier(src['lastCause']),
+    grants: Math.min(readCount(src['grants']), GRANT_MILESTONES.length),
+    run: isRecord(src['run']) ? readRun(src['run']) : createRunStats(),
+    rng: Math.floor(rawRng) >>> 0,
+    nextId: Math.max(readCount(src['nextId']), highestId + 1, 1),
+  };
+}
+
+function readSummary(value: unknown): RunSummary | null {
+  if (!isRecord(value)) return null;
+  const outcome = OUTCOMES.find((o) => o === value['outcome']);
+  if (!outcome) return null;
+  return {
+    outcome,
+    lab: Math.max(1, readCount(value['lab'])),
+    seconds: readNumber(value['seconds'], 0),
+    funds: readNumber(value['funds'], 0),
+    experiments: readCount(value['experiments']),
+    successes: readCount(value['successes']),
+    failures: readCount(value['failures']),
+    survived: readCount(value['survived']),
+    observed: readCount(value['observed']),
+    closestZone: readZone(value['closestZone']),
+    baseEchoes: readCount(value['baseEchoes']),
+    riskMult: clamp(readNumber(value['riskMult'], 1, 1), 1, 5),
+    echoesEarned: readCount(value['echoesEarned']),
+    tapped: readNumber(value['tapped'], 0),
+    byTier: readQuad(value['byTier'], false),
+    history: readSamples(value['history'], HISTORY_MAX_SAMPLES),
+    perkTier: readProjectTier(value['perkTier']),
+    legacyGrant: readNumber(value['legacyGrant'], 0),
+  };
+}
+
+function readPerks(value: unknown): ProjectTier[] {
+  const perks: ProjectTier[] = [];
+  for (const entry of readList(value, 3)) {
+    const tier = readProjectTier(entry);
+    if (tier !== null && !perks.includes(tier)) perks.push(tier);
+  }
+  return perks;
+}
+
 /**
  * Rebuilds a GameState from untrusted data. Every field is validated and
  * clamped, so a damaged or hand-edited save can never crash the game.
+ * Version 1 saves (before the lab existed) load with a fresh lab.
  */
 export function parseSave(raw: unknown, now: number): GameState | null {
   if (!isRecord(raw)) return null;
-  if (raw['version'] !== SAVE_VERSION) return null;
+  if (!READABLE_VERSIONS.includes(raw['version'])) return null;
 
   const base = createInitialState(now);
   const stats = isRecord(raw['stats']) ? raw['stats'] : {};
@@ -69,8 +263,10 @@ export function parseSave(raw: unknown, now: number): GameState | null {
     }
   }
 
+  const notes = readNotes(raw['notes'], base.notes);
+
   return {
-    version: 1,
+    version: 2,
     amplitude: readNumber(raw['amplitude'], base.amplitude),
     runAmplitude: readNumber(raw['runAmplitude'], 0),
     bought: readQuad(raw['bought'], true),
@@ -78,11 +274,19 @@ export function parseSave(raw: unknown, now: number): GameState | null {
     upgrades,
     surge: readSurge(raw['surge']),
     echoes: readCount(raw['echoes']),
+    perks: readPerks(raw['perks']),
+    lab: readLab(raw['lab'], base.lab.rng, notes),
+    notes,
+    history: readHistory(raw['history']),
+    summary: readSummary(raw['summary']),
     stats: {
       totalAmplitude: readNumber(stats['totalAmplitude'], 0),
       taps: readCount(stats['taps']),
       collapses: readCount(stats['collapses']),
       playSeconds: readNumber(stats['playSeconds'], 0),
+      experiments: readCount(stats['experiments']),
+      observed: readCount(stats['observed']),
+      blackHoles: readCount(stats['blackHoles']),
     },
     tutorial: {
       step: readCount(tutorial['step']),
@@ -143,8 +347,23 @@ export function clearSave(): void {
   }
 }
 
+/** Notebook lines contain non-Latin characters (ψ), so encode as UTF-8 before base64. */
+function toBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function fromBase64(code: string): string {
+  const binary = atob(code);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 export function encodeExport(state: GameState): string {
-  return `${EXPORT_PREFIX}${btoa(JSON.stringify(state))}`;
+  return `${EXPORT_PREFIX}${toBase64(JSON.stringify(state))}`;
 }
 
 export function decodeImport(text: string, now: number): ImportResult {
@@ -155,7 +374,7 @@ export function decodeImport(text: string, now: number): ImportResult {
   }
   let json: string;
   try {
-    json = atob(cleaned.slice(EXPORT_PREFIX.length));
+    json = fromBase64(cleaned.slice(EXPORT_PREFIX.length));
   } catch {
     return { ok: false, error: 'The save code is damaged or was cut off when copying.' };
   }
@@ -169,3 +388,4 @@ export function decodeImport(text: string, now: number): ImportResult {
   if (!state) return { ok: false, error: 'This save was made by an incompatible version.' };
   return { ok: true, state: { ...state, lastSaved: now } };
 }
+

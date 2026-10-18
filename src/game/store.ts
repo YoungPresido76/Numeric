@@ -1,5 +1,5 @@
 import { AWAY_REPORT_SECONDS, AWAY_THRESHOLD_SECONDS } from './data';
-import { advance, applyOffline, createInitialState, derive } from './engine';
+import { applyOffline, createInitialState, derive } from './engine';
 import { reduce } from './reducer';
 import {
   clearSave,
@@ -9,6 +9,7 @@ import {
   persistGame,
   type ImportResult,
 } from './save';
+import { step } from './sim';
 import type { Derived, GameAction, GameState, OfflineReport } from './types';
 
 export type SaveStatus = 'ok' | 'unavailable' | 'error';
@@ -60,7 +61,7 @@ export class GameStore {
     } else if (loaded.status === 'corrupt') {
       notice = this.makeNotice(
         'warning',
-        'Your saved game could not be read, so a fresh reality was started. The damaged data was kept as a backup in this browser.',
+        'Your saved game could not be read, so a fresh lab was opened. The damaged data was kept as a backup in this browser.',
       );
     } else if (loaded.status === 'unavailable') {
       saveStatus = 'unavailable';
@@ -91,7 +92,10 @@ export class GameStore {
     return true;
   }
 
-  /** Advances the game to wall-clock time `now`. Long gaps count as time away. */
+  /**
+   * Advances the game to wall-clock time `now`. Long gaps count as time away:
+   * production runs at offline efficiency and the lab is paused.
+   */
   tick(now: number): void {
     const gapMs = now - this.lastWall;
     this.lastWall = now;
@@ -108,13 +112,7 @@ export class GameStore {
       return;
     }
 
-    const advanced = advance(state, seconds);
-    this.commit({
-      state: {
-        ...advanced,
-        stats: { ...advanced.stats, playSeconds: advanced.stats.playSeconds + seconds },
-      },
-    });
+    this.commit({ state: step(state, seconds) });
   }
 
   save(now: number = Date.now()): void {

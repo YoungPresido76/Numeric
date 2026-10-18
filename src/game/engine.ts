@@ -1,11 +1,15 @@
 import {
   BASE_OFFLINE_EFFICIENCY,
   BASE_TAP_FRACTION,
+  BLACK_HOLE_PAYOUT,
   BUILDINGS,
   ECHO_BONUS_EACH,
   ECHO_DISCOUNT_CAP,
   ECHO_DISCOUNT_EACH,
   ECHO_DIVISOR,
+  LEGACY_CAP,
+  LEGACY_PER_ECHO,
+  MAX_NOTES,
   MILESTONES,
   OFFLINE_CAP_SECONDS,
   START_AMPLITUDE,
@@ -14,21 +18,29 @@ import {
   SURGE_MULT,
   UPGRADE_BY_ID,
 } from './data';
-import { clampFinite } from './math';
+import { createHistory, createLab, addNotes, riskMultiplier, zoneOf } from './lab';
+import { clampFinite, formatNumber } from './math';
+import { narrative, type Line } from './narrative';
 import type {
   BuyAmount,
   Derived,
   GameState,
+  LabOutcome,
   OfflineReport,
+  ProjectTier,
   Quad,
+  RunSummary,
   Tier,
   UpgradeDef,
   UpgradeId,
 } from './types';
 
 export function createInitialState(now: number): GameState {
+  const seed = ((now ^ 0x9e3779b9) >>> 0) || 1;
+  const lab = createLab(seed, 1);
+  const opening = narrative.labOpened(1, 0);
   return {
-    version: 1,
+    version: 2,
     amplitude: START_AMPLITUDE,
     runAmplitude: 0,
     bought: [0, 0, 0, 0],
@@ -36,7 +48,20 @@ export function createInitialState(now: number): GameState {
     upgrades: [],
     surge: { activeLeft: 0, cooldownLeft: 0 },
     echoes: 0,
-    stats: { totalAmplitude: 0, taps: 0, collapses: 0, playSeconds: 0 },
+    perks: [],
+    lab: { ...lab, nextId: 2 },
+    notes: [{ id: 1, text: opening.text, tone: opening.tone }],
+    history: createHistory(),
+    summary: null,
+    stats: {
+      totalAmplitude: 0,
+      taps: 0,
+      collapses: 0,
+      playSeconds: 0,
+      experiments: 0,
+      observed: 0,
+      blackHoles: 0,
+    },
     tutorial: { step: 0, done: false },
     settings: { sound: true },
     lastSaved: now,
@@ -47,18 +72,18 @@ export function createInitialState(now: number): GameState {
 /* Derived values                                                      */
 /* ------------------------------------------------------------------ */
 
-/** Output doubles each time `count` crosses a milestone. */
-export function milestoneMult(count: number): number {
+/** Output doubles each time `count` crosses one of this tier's milestones. */
+export function milestoneMult(tier: Tier, count: number): number {
   let mult = 1;
-  for (const threshold of MILESTONES) {
+  for (const threshold of MILESTONES[tier] ?? []) {
     if (count >= threshold) mult *= 2;
   }
   return mult;
 }
 
-/** The next milestone above `count`, or null when all are reached. */
-export function nextMilestone(count: number): number | null {
-  for (const threshold of MILESTONES) {
+/** The next milestone above `count` for this tier, or null when all are reached. */
+export function nextMilestone(tier: Tier, count: number): number | null {
+  for (const threshold of MILESTONES[tier] ?? []) {
     if (count < threshold) return threshold;
   }
   return null;
@@ -111,10 +136,10 @@ export function derive(state: GameState): Derived {
     state.bought[3] + state.generated[3],
   ];
   const rates: Quad = [
-    BUILDINGS[0].baseRate * milestoneMult(state.bought[0]) * tierMult[0],
-    BUILDINGS[1].baseRate * milestoneMult(state.bought[1]) * tierMult[1],
-    BUILDINGS[2].baseRate * milestoneMult(state.bought[2]) * tierMult[2],
-    BUILDINGS[3].baseRate * milestoneMult(state.bought[3]) * tierMult[3],
+    BUILDINGS[0].baseRate * milestoneMult(0, state.bought[0]) * tierMult[0],
+    BUILDINGS[1].baseRate * milestoneMult(1, state.bought[1]) * tierMult[1],
+    BUILDINGS[2].baseRate * milestoneMult(2, state.bought[2]) * tierMult[2],
+    BUILDINGS[3].baseRate * milestoneMult(3, state.bought[3]) * tierMult[3],
   ];
 
   const surgeFactor = state.surge.activeLeft > 0 ? SURGE_MULT : 1;
@@ -135,12 +160,17 @@ export function derive(state: GameState): Derived {
     surgeCooldown: SURGE_BASE_COOLDOWN * surgeCooldownMult,
     offlineEfficiency,
     costDiscount: costDiscountFor(state.echoes),
+    zone: zoneOf(state.lab.stability),
   };
 }
 
 /* ------------------------------------------------------------------ */
 /* Time advancement                                                    */
 /* ------------------------------------------------------------------ */
+
+function ratio(part: number, whole: number): number {
+  return whole > 0 ? part / whole : 0;
+}
 
 /**
  * Integrates production over `t` seconds with every multiplier held constant.
@@ -154,6 +184,10 @@ export function derive(state: GameState): Derived {
  *   n1(t) = n1 + a2·n2·t + a2·a3·n3·t²/2
  *   n0(t) = n0 + a1·n1·t + a1·a2·n2·t²/2 + a1·a2·a3·n3·t³/6
  *   ψ     = out · a0 · ∫ n0 dt
+ *
+ * Each term of the integral is also credited to a tier for the output
+ * breakdown: bought units credit their own tier, generated units credit the
+ * tier that spawned them.
  */
 function integrate(state: GameState, t: number): GameState {
   const d = derive(state);
@@ -166,9 +200,23 @@ function integrate(state: GameState, t: number): GameState {
   const dg2 = a3 * n3 * t;
   const dg1 = a2 * n2 * t + (a2 * a3 * n3 * t2) / 2;
   const dg0 = a1 * n1 * t + (a1 * a2 * n2 * t2) / 2 + (a1 * a2 * a3 * n3 * t3) / 6;
-  const integral =
-    n0 * t + (a1 * n1 * t2) / 2 + (a1 * a2 * n2 * t3) / 6 + (a1 * a2 * a3 * n3 * t4) / 24;
-  const gained = clampFinite(a0 * integral * d.outputMult);
+
+  const term0 = n0 * t;
+  const term1 = (a1 * n1 * t2) / 2;
+  const term2 = (a1 * a2 * n2 * t3) / 6;
+  const term3 = (a1 * a2 * a3 * n3 * t4) / 24;
+  const scale = a0 * d.outputMult;
+  const gained = clampFinite(scale * (term0 + term1 + term2 + term3));
+
+  const bought0 = ratio(state.bought[0], n0);
+  const bought1 = ratio(state.bought[1], n1);
+  const bought2 = ratio(state.bought[2], n2);
+  const byTier: Quad = [
+    state.lab.run.byTier[0] + scale * term0 * bought0,
+    state.lab.run.byTier[1] + scale * (term0 * (1 - bought0) + term1 * bought1),
+    state.lab.run.byTier[2] + scale * (term1 * (1 - bought1) + term2 * bought2),
+    state.lab.run.byTier[3] + scale * (term2 * (1 - bought2) + term3),
+  ];
 
   const generated: Quad = [
     clampFinite(state.generated[0] + dg0),
@@ -186,6 +234,10 @@ function integrate(state: GameState, t: number): GameState {
       activeLeft: Math.max(0, state.surge.activeLeft - t),
       cooldownLeft: Math.max(0, state.surge.cooldownLeft - t),
     },
+    lab: {
+      ...state.lab,
+      run: { ...state.lab.run, byTier: byTier.map(clampFinite) as Quad },
+    },
     stats: {
       ...state.stats,
       totalAmplitude: clampFinite(state.stats.totalAmplitude + gained),
@@ -193,7 +245,7 @@ function integrate(state: GameState, t: number): GameState {
   };
 }
 
-/** Advances the simulation by `dt` seconds, splitting where Surge expires. */
+/** Advances production by `dt` seconds, splitting where Surge expires. */
 export function advance(state: GameState, dt: number): GameState {
   if (!(dt > 0)) return state;
   const surgeLeft = state.surge.activeLeft;
@@ -205,7 +257,8 @@ export function advance(state: GameState, dt: number): GameState {
 
 /**
  * Applies time spent away. Production is simulated as if Surge were off, then
- * scaled by the offline efficiency. Surge never grants offline bonus.
+ * scaled by the offline efficiency. Surge never grants offline bonus. The lab
+ * is paused: no experiments start or resolve and stability does not change.
  */
 export function applyOffline(
   state: GameState,
@@ -225,6 +278,12 @@ export function applyOffline(
     base.generated[2] + (simulated.generated[2] - base.generated[2]) * efficiency,
     0,
   ];
+  const byTier: Quad = [
+    state.lab.run.byTier[0] + (simulated.lab.run.byTier[0] - state.lab.run.byTier[0]) * efficiency,
+    state.lab.run.byTier[1] + (simulated.lab.run.byTier[1] - state.lab.run.byTier[1]) * efficiency,
+    state.lab.run.byTier[2] + (simulated.lab.run.byTier[2] - state.lab.run.byTier[2]) * efficiency,
+    state.lab.run.byTier[3] + (simulated.lab.run.byTier[3] - state.lab.run.byTier[3]) * efficiency,
+  ];
 
   const next: GameState = {
     ...state,
@@ -235,6 +294,7 @@ export function applyOffline(
       activeLeft: 0,
       cooldownLeft: Math.max(0, state.surge.cooldownLeft - elapsedSeconds),
     },
+    lab: { ...state.lab, run: { ...state.lab.run, byTier } },
     stats: {
       ...state.stats,
       totalAmplitude: clampFinite(state.stats.totalAmplitude + gained),
@@ -304,11 +364,17 @@ export function buyUpgrade(state: GameState, id: UpgradeId): GameState {
 /* Visibility: what the interface reveals and when                     */
 /* ------------------------------------------------------------------ */
 
-/** A building appears once you own it, or own the tier below it. */
+/**
+ * A project appears once you own it or the tier below it. A perk earned from a
+ * past lab's close call shows it one tier earlier: when you own the tier two below.
+ */
 export function isTierVisible(state: GameState, tier: Tier): boolean {
   if (tier === 0) return true;
-  const below = (tier - 1) as Tier;
-  return state.bought[tier] > 0 || state.bought[below] > 0;
+  if (state.bought[tier] > 0 || state.bought[(tier - 1) as Tier] > 0) return true;
+  if (state.perks.includes(tier as ProjectTier)) {
+    return tier === 1 || state.bought[(tier - 2) as Tier] > 0;
+  }
+  return false;
 }
 
 /** An unbought upgrade surfaces once the run is a fair way toward its cost. */
@@ -327,6 +393,7 @@ export function tap(state: GameState): GameState {
     ...state,
     amplitude: clampFinite(state.amplitude + gain),
     runAmplitude: clampFinite(state.runAmplitude + gain),
+    lab: { ...state.lab, run: { ...state.lab.run, tapped: state.lab.run.tapped + gain } },
     stats: {
       ...state.stats,
       taps: state.stats.taps + 1,
@@ -346,29 +413,110 @@ export function activateSurge(state: GameState): GameState {
 }
 
 /* ------------------------------------------------------------------ */
-/* Prestige: Collapse                                                  */
+/* Prestige: closing a lab                                             */
 /* ------------------------------------------------------------------ */
 
-/** Echoes earned by collapsing a reality that produced `runAmplitude`. */
+/** Base Echoes for a lab that produced `runAmplitude`, before the risk multiplier. */
 export function echoGain(runAmplitude: number): number {
   if (!(runAmplitude > 0)) return 0;
   return Math.floor(Math.sqrt(runAmplitude / ECHO_DIVISOR));
 }
 
-/** Run amplitude required to earn `echoes` Echoes in one collapse. */
+/** Run amplitude required to earn `echoes` base Echoes. */
 export function amplitudeForEchoes(echoes: number): number {
   return echoes * echoes * ECHO_DIVISOR;
 }
 
-export function collapse(state: GameState): GameState {
-  const gain = echoGain(state.runAmplitude);
-  if (gain < 1) return state;
+export interface EchoPayout {
+  base: number;
+  mult: number;
+  /** What a normal Collapse pays. */
+  published: number;
+  /** What a forced black-hole collapse would pay. */
+  blackHole: number;
+}
+
+/** Echo payouts for closing the current lab now, including the risk multiplier. */
+export function echoPayout(state: GameState): EchoPayout {
+  const base = echoGain(state.runAmplitude);
+  const mult = riskMultiplier(state.lab.minStability);
+  const published = Math.round(base * mult);
+  const blackHole = base > 0 ? Math.max(1, Math.floor(published * BLACK_HOLE_PAYOUT)) : 0;
+  return { base, mult, published, blackHole };
+}
+
+/** Starting Amplitude bonus for a new lab, scaled by banked Echoes and capped. */
+export function legacyGrantFor(echoes: number): number {
+  return Math.min(LEGACY_CAP, LEGACY_PER_ECHO * echoes);
+}
+
+/**
+ * Ends the current lab. A published lab pays the risk-weighted Echoes; a black
+ * hole pays half of that. Everything else resets, a Legacy Grant seeds the next
+ * lab, and the close call that pulled the lab back from Critical is carried on.
+ */
+export function closeLab(state: GameState, outcome: LabOutcome): GameState {
+  const payout = echoPayout(state);
+  const earned = outcome === 'blackHole' ? payout.blackHole : payout.published;
+  const echoes = state.echoes + earned;
+  const legacyGrant = legacyGrantFor(echoes);
+  const perkTier = state.lab.recovery?.tier ?? null;
+  const perks =
+    perkTier !== null && !state.perks.includes(perkTier) ? [...state.perks, perkTier] : state.perks;
+  const closed = state.stats.collapses + 1;
+  const run = state.lab.run;
+
+  const summary: RunSummary = {
+    outcome,
+    lab: closed,
+    seconds: run.seconds,
+    funds: state.runAmplitude,
+    experiments: run.experiments,
+    successes: run.successes,
+    failures: run.failures,
+    survived: run.survived,
+    observed: run.observed,
+    closestZone: zoneOf(state.lab.minStability),
+    baseEchoes: payout.base,
+    riskMult: payout.mult,
+    echoesEarned: earned,
+    tapped: run.tapped,
+    byTier: [...run.byTier],
+    history: state.history.samples.slice(),
+    perkTier: perkTier !== null && !state.perks.includes(perkTier) ? perkTier : null,
+    legacyGrant,
+  };
+
+  const lines: Line[] = [
+    outcome === 'blackHole' ? narrative.blackHole(closed) : narrative.published(closed, earned),
+    narrative.labOpened(closed + 1, state.lab.nextId),
+  ];
+  if (legacyGrant > 0) lines.push(narrative.legacy(legacyGrant, formatNumber(legacyGrant)));
+  if (summary.perkTier !== null) lines.push(narrative.perk(summary.perkTier));
+
   const fresh = createInitialState(state.lastSaved);
-  return {
+  const next: GameState = {
     ...fresh,
-    echoes: state.echoes + gain,
-    stats: { ...state.stats, collapses: state.stats.collapses + 1 },
+    amplitude: START_AMPLITUDE + legacyGrant,
+    echoes,
+    perks,
+    lab: createLab(state.lab.rng, state.lab.nextId),
+    notes: state.notes.slice(-(MAX_NOTES - lines.length)),
+    summary,
+    stats: {
+      ...state.stats,
+      collapses: closed,
+      blackHoles: state.stats.blackHoles + (outcome === 'blackHole' ? 1 : 0),
+    },
     tutorial: state.tutorial,
     settings: state.settings,
+    lastSaved: state.lastSaved,
   };
+  return addNotes(next, lines);
+}
+
+/** A deliberate Collapse. Needs at least one base Echo. */
+export function collapse(state: GameState): GameState {
+  if (echoGain(state.runAmplitude) < 1) return state;
+  return closeLab(state, 'published');
 }

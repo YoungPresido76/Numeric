@@ -3,7 +3,7 @@ import { echoGain } from './engine';
 import { formatNumber } from './math';
 import type { GameState } from './types';
 
-export type TutorialTab = 'build' | 'upgrades' | 'collapse';
+export type TutorialTab = 'build' | 'upgrades' | 'lab' | 'collapse';
 
 export interface TutorialStepDef {
   id: string;
@@ -21,16 +21,16 @@ const always = (): boolean => true;
 export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     id: 'observe',
-    title: 'Observe the orb',
-    body: 'Tap the glowing orb to collapse a wave and gain Amplitude (ψ).',
+    title: 'Watch the results come in',
+    body: 'Tap the glowing orb to observe the lab and gain Amplitude (ψ), your research budget.',
     hintTab: null,
     isComplete: (s) => s.stats.taps >= 3,
     isVisible: always,
   },
   {
     id: 'qubit',
-    title: 'Buy your first Qubit',
-    body: 'Open Build and buy a Qubit. It adds ψ every second, even while you rest.',
+    title: 'Fund your first project',
+    body: 'Open Projects and buy a Qubit. It brings in ψ every second, even while you rest.',
     hintTab: 'build',
     isComplete: (s) => s.bought[0] >= 1,
     isVisible: always,
@@ -38,7 +38,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     id: 'register',
     title: 'Grow the register',
-    body: 'Each Qubit costs about 15% more than the last. Buy a few more.',
+    body: 'Each Qubit costs about 22% more than the last. Buy a few more.',
     hintTab: 'build',
     isComplete: (s) => s.bought[0] >= 5,
     isVisible: always,
@@ -46,7 +46,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     id: 'gate',
     title: 'Unlock Superposition Gates',
-    body: `Gates create Qubits for you, so growth compounds. The first costs ${formatNumber(BUILDINGS[1].baseCost)} ψ.`,
+    body: `Gates create Qubits for you, so growth compounds. The first costs ${formatNumber(BUILDINGS[1].baseCost)} ψ. Gates also start running experiments.`,
     hintTab: 'build',
     isComplete: (s) => s.bought[1] >= 1,
     isVisible: always,
@@ -54,7 +54,7 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     id: 'upgrade',
     title: 'Buy an upgrade',
-    body: 'Upgrades are permanent boosts for this reality. Pick one in the Upgrades tab.',
+    body: 'Upgrades are permanent boosts for this lab. Pick one in the Upgrades tab.',
     hintTab: 'upgrades',
     isComplete: (s) => s.upgrades.length >= 1,
     isVisible: always,
@@ -62,15 +62,23 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   {
     id: 'surge',
     title: 'Trigger a Surge',
-    body: `Superposition Surge multiplies output by ${SURGE_MULT} for ${SURGE_BASE_DURATION} seconds, then recharges.`,
+    body: `Superposition Surge multiplies output by ${SURGE_MULT} for ${SURGE_BASE_DURATION} seconds and lets you observe any experiment instantly. Then it recharges.`,
     hintTab: null,
     isComplete: (s) => s.surge.activeLeft > 0 || s.surge.cooldownLeft > 0,
     isVisible: always,
   },
   {
+    id: 'experiment',
+    title: 'Observe an experiment',
+    body: 'Experiments stay superposed until observed. Observe one in its first 5 seconds for +15% success. A failure costs funds and stability; neutralize it to recover.',
+    hintTab: 'lab',
+    isComplete: (s) => s.stats.observed >= 1 || s.stats.experiments >= 3,
+    isVisible: (s) => s.lab.experiments.length > 0 || s.stats.experiments > 0,
+  },
+  {
     id: 'collapse',
-    title: 'Echoes are ready',
-    body: 'Open Collapse to reset this reality for permanent Echoes that speed up every future run.',
+    title: 'Your research is ready to publish',
+    body: 'Open Collapse to close this lab for permanent Echoes. A lab that survived a close call pays more.',
     hintTab: 'collapse',
     isComplete: (s) => s.stats.collapses >= 1,
     isVisible: (s) => echoGain(s.runAmplitude) >= 1,
