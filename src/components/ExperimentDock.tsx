@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react';
-import { EXPERIMENT_WINDOW, NEUTRALIZE_WINDOW, OBSERVE_BONUS, OBSERVE_WINDOW, PROJECT_NAMES } from '../game/data';
-import { canObserve, neutralizeCost } from '../game/lab';
+import { NEUTRALIZE_WINDOW, PROJECT_NAMES } from '../game/data';
+import { canObserve, neutralizeCost, taskStatus } from '../game/lab';
+import { describeTask } from '../game/narrative';
 import { clamp, formatNumber } from '../game/math';
 import type { Experiment, Failure, GameState, ObserveTarget } from '../game/types';
 import { Eye, ShieldCheck, TIER_GLOW, TIER_ICONS, TIER_TILE } from './icons';
@@ -14,17 +15,20 @@ interface ExperimentDockProps {
 const MAX_VISIBLE = 3;
 
 interface ExperimentCardProps {
+  state: GameState;
   experiment: Experiment;
   surging: boolean;
   onObserve: (target: ObserveTarget) => void;
 }
 
-function ExperimentCard({ experiment, surging, onObserve }: ExperimentCardProps): ReactElement {
+function ExperimentCard({ state, experiment, surging, onObserve }: ExperimentCardProps): ReactElement {
   const Icon = TIER_ICONS[experiment.tier];
   const observable = canObserve(experiment, surging);
-  const bonusLeft = Math.max(0, OBSERVE_WINDOW - experiment.age);
-  const resolveIn = Math.max(0, Math.ceil(EXPERIMENT_WINDOW - experiment.age));
-  const progress = clamp(experiment.age / EXPERIMENT_WINDOW, 0, 1);
+  const { task } = experiment;
+  const status = taskStatus(state, experiment);
+  const left = Math.max(0, Math.ceil(task.limit - experiment.age));
+  const clock = clamp(1 - experiment.age / task.limit, 0, 1);
+  const urgent = left <= 8;
   const name = PROJECT_NAMES[experiment.tier];
 
   return (
@@ -40,30 +44,34 @@ function ExperimentCard({ experiment, surging, onObserve }: ExperimentCardProps)
           <Icon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-slate-100">{name}</p>
-          <p className="mt-0.5 flex items-center gap-1.5 font-numeric text-[11px] text-slate-400">
-            <span aria-hidden="true" className="superposed inline-block size-1.5 rounded-full bg-cyan-300" />
-            {observable
-              ? surging
-                ? 'Superposed. Observe it instantly.'
-                : `Superposed. +${Math.round(OBSERVE_BONUS * 100)}% if observed in ${Math.ceil(bonusLeft)}s`
-              : `Unobserved. Resolves in ${resolveIn}s`}
+          <p className="line-clamp-2 text-[13px] leading-tight font-semibold text-slate-100">{describeTask(task)}</p>
+          <p className="mt-1 flex items-center gap-1.5 font-numeric text-[11px] text-slate-400">
+            <span aria-hidden="true" className="superposed inline-block size-1.5 shrink-0 rounded-full bg-cyan-300" />
+            <span className="truncate">
+              {name} · {status.label}
+            </span>
+            <span className={`ml-auto shrink-0 tabular-nums ${urgent ? 'text-amber-300' : 'text-slate-300'}`}>
+              {task.kind === 'hold' ? `hold ${left}s` : `${left}s`}
+            </span>
           </p>
         </div>
         {observable ? (
           <button
             type="button"
             onClick={() => onObserve(experiment.id)}
-            aria-label={`Observe ${name}`}
-            className="flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center gap-1.5 rounded-xl bg-cyan-300 px-3 text-xs font-bold text-slate-950 active:scale-95 active:bg-cyan-200"
+            aria-label={`Observe ${name} to complete it instantly`}
+            className="flex min-h-11 min-w-[5.5rem] touch-manipulation items-center justify-center gap-1.5 rounded-xl bg-sky-200 px-3 text-xs font-bold text-slate-950 active:scale-95 active:bg-sky-100"
           >
             <Eye aria-hidden="true" className="size-4" />
             Observe
           </button>
         ) : null}
       </div>
-      <div className="h-0.5 bg-white/10" aria-hidden="true">
-        <div className="h-full bg-cyan-300/70" style={{ width: `${progress * 100}%` }} />
+      <div className="relative h-0.5 bg-white/10" aria-hidden="true">
+        <div className={`h-full ${urgent ? 'bg-amber-300/80' : 'bg-cyan-300/70'}`} style={{ width: `${clock * 100}%` }} />
+      </div>
+      <div className="relative h-0.5 bg-white/5" aria-hidden="true">
+        <div className="h-full bg-emerald-300/80 transition-[width] duration-200" style={{ width: `${status.fraction * 100}%` }} />
       </div>
     </li>
   );
@@ -120,8 +128,8 @@ function FailureCard({ failure, cost, affordable, onNeutralize }: FailureCardPro
 }
 
 /**
- * Time-sensitive actions, visible on every tab: experiments waiting to be
- * observed and failures waiting to be neutralized. Floats above the tab bar.
+ * Time-sensitive work, visible on every tab: experiment tasks to complete
+ * before their clock runs out, and failures waiting to be neutralized. Floats above the tab bar.
  */
 export function ExperimentDock({ state, onObserve, onNeutralize }: ExperimentDockProps): ReactElement | null {
   const surging = state.surge.activeLeft > 0;
@@ -138,7 +146,7 @@ export function ExperimentDock({ state, onObserve, onNeutralize }: ExperimentDoc
     ...failures.map((f) => (
       <FailureCard key={`f${f.id}`} failure={f} cost={cost} affordable={affordable} onNeutralize={onNeutralize} />
     )),
-    ...experiments.map((e) => <ExperimentCard key={`e${e.id}`} experiment={e} surging={surging} onObserve={onObserve} />),
+    ...experiments.map((e) => <ExperimentCard key={`e${e.id}`} state={state} experiment={e} surging={surging} onObserve={onObserve} />),
   ];
   const visible = cards.slice(0, MAX_VISIBLE);
   const hidden = cards.length - visible.length;

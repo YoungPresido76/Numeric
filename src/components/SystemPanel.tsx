@@ -7,11 +7,8 @@ import {
 } from 'react';
 import {
   BASE_OFFLINE_EFFICIENCY,
-  BASE_SUCCESS_CHANCE,
   ECHO_BONUS_EACH,
   NEUTRALIZE_WINDOW,
-  OBSERVE_BONUS,
-  OBSERVE_WINDOW,
   OFFLINE_CAP_SECONDS,
   RISK_MULT_MAX,
   SURGE_BASE_COOLDOWN,
@@ -23,7 +20,7 @@ import type { Snapshot } from '../game/store';
 import { useConfirm } from '../hooks/useConfirm';
 import type { GameActions } from '../hooks/useGame';
 
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 
 interface SystemPanelProps {
   snapshot: Snapshot;
@@ -248,17 +245,16 @@ export function SystemPanel({ snapshot, actions }: SystemPanelProps): ReactEleme
             them, so growth compounds. Owning 10, 25 and 50 (and 100 for Qubits and Gates) doubles output.
           </li>
           <li>
-            Gates and above run experiments. Observe one in its first {OBSERVE_WINDOW} seconds for +
-            {Math.round(OBSERVE_BONUS * 100)}% success. Unobserved, it resolves on its own at{' '}
-            {Math.round(BASE_SUCCESS_CHANCE * 100)}%.
+            Gates and above start experiments. Each is a task with a clock: earn some ψ (sometimes without funding a
+            tier), fund a project, tap the orb, or hold and fund nothing. Complete it for funds and stability.
           </li>
           <li>
-            A failure costs funds and stability. Neutralize it within {NEUTRALIZE_WINDOW} seconds, or it keeps draining.
+            A missed or broken task costs funds and stability. Neutralize it within {NEUTRALIZE_WINDOW} seconds, or it keeps draining.
             Stability is shown only by colour and warnings.
           </li>
           <li>
             Surge multiplies output by {SURGE_MULT} for {SURGE_BASE_DURATION}s, recharges for {SURGE_BASE_COOLDOWN}s,
-            and lets you observe any experiment instantly.
+            and lets you observe any experiment, which completes its task instantly.
           </li>
           <li>
             Collapse publishes the lab for Echoes: +{Math.round(ECHO_BONUS_EACH * 100)}% production each, forever. A lab

@@ -89,7 +89,7 @@ export function LabPanel({ state, zone }: LabPanelProps): ReactElement {
                     {PROJECT_NAMES[tier]}
                   </p>
                   <p className="font-numeric text-[11px] text-slate-500">
-                    {!online ? 'Offline. Fund this project to start.' : active ? 'Experiment superposed now' : 'Online'}
+                    {!online ? 'Offline. Fund this project to start.' : active ? 'Experiment task running' : 'Online'}
                   </p>
                 </div>
               </li>
