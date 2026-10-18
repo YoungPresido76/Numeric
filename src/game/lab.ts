@@ -9,6 +9,7 @@ import {
   HISTORY_START_INTERVAL,
   IDLE_NOTE_SECONDS,
   MAX_NOTES,
+  NEUTRALIZE_COST_CAP,
   NEUTRALIZE_COST_FRACTION,
   NEUTRALIZE_ESCALATION,
   NEUTRALIZE_STABILITY,
@@ -228,7 +229,7 @@ export function canObserve(_experiment: Experiment, surgeActive: boolean): boole
 export function neutralizeCost(state: GameState): number {
   const raw =
     state.amplitude * NEUTRALIZE_COST_FRACTION * (1 + NEUTRALIZE_ESCALATION * state.lab.neutralizes);
-  return Math.max(1, raw);
+  return Math.max(1, Math.min(raw, state.amplitude * NEUTRALIZE_COST_CAP));
 }
 
 /* ------------------------------------------------------------------ */

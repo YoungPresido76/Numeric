@@ -100,7 +100,10 @@ export const FAIL_STABILITY_MAX = 20;
 
 /** Seconds to neutralize a failure before it festers. */
 export const NEUTRALIZE_WINDOW = 90;
-export const NEUTRALIZE_COST_FRACTION = 0.02;
+/** Neutralize cost as a fraction of current Amplitude. */
+export const NEUTRALIZE_COST_FRACTION = 0.5;
+/** The cost never exceeds this share of current Amplitude, so the escalation cannot make a repair unaffordable. */
+export const NEUTRALIZE_COST_CAP = 0.5;
 /** Each neutralization this lab adds this fraction to the next cost. */
 export const NEUTRALIZE_ESCALATION = 0.15;
 export const NEUTRALIZE_STABILITY = 15;
@@ -181,13 +184,17 @@ export const BUILDINGS: readonly BuildingDef[] = [
   },
 ];
 
+/**
+ * Upgrade costs: each was multiplied by 10, then by a further 2 for every
+ * upgrade further down the list (cost = original x 10 x 2^position).
+ */
 export const UPGRADES: readonly UpgradeDef[] = [
   {
     id: 'phaseLock',
     name: 'Phase Lock',
     symbol: 'φ',
     description: 'Qubit output ×2.',
-    cost: 2500,
+    cost: 25_000,
     effect: { kind: 'tierMult', tier: 0, mult: 2 },
   },
   {
@@ -195,7 +202,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Quantum Observer',
     symbol: '⟨ψ|',
     description: 'Taps gain +4% of ψ/s (5% total).',
-    cost: 10000,
+    cost: 200_000,
     effect: { kind: 'tapFraction', add: 0.04 },
   },
   {
@@ -203,7 +210,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Constructive Interference',
     symbol: '≈',
     description: 'Gate output ×2.',
-    cost: 40000,
+    cost: 1_600_000,
     effect: { kind: 'tierMult', tier: 1, mult: 2 },
   },
   {
@@ -211,7 +218,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Coherence Window',
     symbol: 'τ',
     description: 'Surge lasts 50% longer.',
-    cost: 150000,
+    cost: 12_000_000,
     effect: { kind: 'surgeDuration', mult: 1.5 },
   },
   {
@@ -219,7 +226,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Tensor Weave',
     symbol: '⊗',
     description: 'Lattice output ×2.',
-    cost: 600000,
+    cost: 96_000_000,
     effect: { kind: 'tierMult', tier: 2, mult: 2 },
   },
   {
@@ -227,7 +234,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Error Correction',
     symbol: '✓',
     description: 'All ψ output ×1.5.',
-    cost: 1500000,
+    cost: 480_000_000,
     effect: { kind: 'globalMult', mult: 1.5 },
   },
   {
@@ -235,7 +242,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Rapid Recharge',
     symbol: '↻',
     description: 'Surge recharges 40% faster.',
-    cost: 4000000,
+    cost: 2_560_000_000,
     effect: { kind: 'surgeCooldown', mult: 0.6 },
   },
   {
@@ -243,7 +250,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Persistent State',
     symbol: '∣⟩',
     description: 'Offline progress runs at 80% instead of 50%.',
-    cost: 12000000,
+    cost: 15_360_000_000,
     effect: { kind: 'offlineEfficiency', value: 0.8 },
   },
   {
@@ -251,7 +258,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Branch Resonance',
     symbol: '∥',
     description: 'Branch output ×2.',
-    cost: 50000000,
+    cost: 128_000_000_000,
     effect: { kind: 'tierMult', tier: 3, mult: 2 },
   },
   {
@@ -259,7 +266,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
     name: 'Grand Unification',
     symbol: '∞',
     description: 'All ψ output ×3.',
-    cost: 1200000000,
+    cost: 6_144_000_000_000,
     effect: { kind: 'globalMult', mult: 3 },
   },
 ];
@@ -288,7 +295,7 @@ export const RESEARCH_MAIN_MAX = 3;
  */
 export const RESEARCH_SUB_CAPS: readonly number[] = [4, 6, 8];
 export const RESEARCH_SUB_MAX = 8;
-/** Each Main stage costs this many times the stage before. Sub-upgrades are not affected. */
+/** Each Main stage costs this many times the stage before. Sub-upgrade ranks bought under a later Main stage cost this much more per stage too. */
 export const RESEARCH_STAGE_COST_MULT = 5;
 
 /** What a rank of a research node does. `per` is the effect of one rank. */

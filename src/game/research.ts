@@ -63,10 +63,14 @@ export function mainCost(def: ResearchTreeDef, mainRank: number): number {
   return def.mainBaseCost * Math.pow(RESEARCH_STAGE_COST_MULT, mainRank);
 }
 
-/** Amplitude cost of the next rank of a Sub-upgrade that holds `rank` ranks. It rises with every rank. */
-export function subCost(def: ResearchTreeDef, sub: 0 | 1, rank: number): number {
+/**
+ * Amplitude cost of the next rank of a Sub-upgrade that holds `rank` ranks. It rises with every rank,
+ * and again by the stage multiplier for each Main stage already bought, so the Subs that unlock the
+ * next Main stage cost more than the ones before.
+ */
+export function subCost(def: ResearchTreeDef, sub: 0 | 1, rank: number, mainRank: number): number {
   const entry = def.subs[sub];
-  return entry.baseCost * Math.pow(entry.costGrowth, rank);
+  return entry.baseCost * Math.pow(entry.costGrowth, rank) * Math.pow(RESEARCH_STAGE_COST_MULT, mainRank);
 }
 
 export type NodeStatus =
@@ -101,7 +105,7 @@ export function nodeStatus(state: GameState, tree: TreeId, node: ResearchNode): 
   const cap = subCap(ranks.main);
   if (rank >= RESEARCH_SUB_MAX) return { kind: 'maxed', rank, max: RESEARCH_SUB_MAX };
   if (rank >= cap) return { kind: 'capped', rank, max: cap };
-  return { kind: 'ready', cost: subCost(def, index, rank), rank, max: cap };
+  return { kind: 'ready', cost: subCost(def, index, rank, ranks.main), rank, max: cap };
 }
 
 /** True when any research node can be bought right now. Drives the tab badge. */
