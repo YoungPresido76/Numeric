@@ -12,6 +12,7 @@ import { Stage } from './components/Stage';
 import { SummaryModal } from './components/SummaryModal';
 import { SystemPanel } from './components/SystemPanel';
 import { TabBar, type TabId } from './components/TabBar';
+import { TearAlert } from './components/TearAlert';
 import { TutorialCard } from './components/TutorialCard';
 import { UpgradesPanel } from './components/UpgradesPanel';
 import { WaveBackground } from './components/WaveBackground';
@@ -112,6 +113,7 @@ export default function App(): ReactElement {
         <NoticeBar notice={snapshot.notice} saveStatus={snapshot.saveStatus} onDismiss={actions.dismissNotice} />
         <Stage snapshot={snapshot} onTap={actions.tap} onSurge={actions.surge} onResolve={actions.resolveWaveforms} />
         <ZoneBanner zone={zone} lab={state.lab} />
+        <TearAlert state={state} onStitch={actions.stitch} />
         <TutorialCard state={state} onSkip={actions.skipTutorial} />
         <NotebookStrip notes={state.notes} />
 
