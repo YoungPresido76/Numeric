@@ -30,3 +30,12 @@ CHANGED (17):
 
 Saves from 0.3.0 load unchanged (new fields default safely).
 Unzip over the project root (on top of 0.3.0), then: npm install && npm run build
+
+Balance pass (0.4.1):
+  src/game/data.ts  - flat upgrade costs x10, then x2 per position down the list
+                      (research keeps its x5 Main stage multiplier, unchanged)
+                      neutralize cost is 50% of current psi
+                      research sub-upgrade cost also x5 per Main stage already bought
+  src/game/lab.ts   - neutralizeCost applies the cap
+  src/game/research.ts - subCost takes the Main rank
+  README.md         - neutralize note
