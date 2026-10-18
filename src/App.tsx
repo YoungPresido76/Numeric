@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react';
 import { BuildingsPanel } from './components/BuildingsPanel';
 import { CollapsePanel } from './components/CollapsePanel';
 import { dockItemCount, ExperimentDock } from './components/ExperimentDock';
+import { FabricPanel } from './components/FabricPanel';
 import { IntroSequence } from './components/IntroSequence';
 import { LabPanel } from './components/LabPanel';
 import { NoticeBar } from './components/NoticeBar';
@@ -19,6 +20,8 @@ import { ZoneOverlay } from './components/ZoneOverlay';
 import { UPGRADES } from './game/data';
 import { canAffordAutobuyer } from './game/autobuyers';
 import { echoGain, isUpgradeVisible } from './game/engine';
+import { fabricUnlocked } from './game/fabric';
+import { canWeave } from './game/fabricOps';
 import { clamp } from './game/math';
 import { canAffordResearch } from './game/research';
 import { TUTORIAL_STEPS } from './game/tutorial';
@@ -44,7 +47,9 @@ export default function App(): ReactElement {
       UPGRADES.some((u) => isUpgradeVisible(state, u) && state.amplitude >= u.cost) || canAffordResearch(state),
     lab: state.lab.experiments.length > 0 || state.lab.failures.length > 0,
     collapse: echoGain(state.runAmplitude) >= 1 || canAffordAutobuyer(state),
+    fabric: canWeave(state),
   };
+  const showFabric = fabricUnlocked(state);
 
   let panel: ReactElement;
   switch (tab) {
@@ -76,6 +81,18 @@ export default function App(): ReactElement {
         />
       );
       break;
+    case 'fabric':
+      panel = (
+        <FabricPanel
+          state={state}
+          onWeave={actions.weave}
+          onDecoherence={actions.buyDecoherence}
+          onWormhole={actions.installWormhole}
+          onDilate={actions.dilate}
+          onThreadUpgrade={actions.buyThreadUpgrade}
+        />
+      );
+      break;
     case 'system':
       panel = <SystemPanel snapshot={snapshot} actions={actions} />;
       break;
@@ -93,7 +110,7 @@ export default function App(): ReactElement {
 
       <div className="relative z-10 mx-auto flex h-full w-full max-w-md flex-col md:border-x md:border-white/10 md:bg-void/50">
         <NoticeBar notice={snapshot.notice} saveStatus={snapshot.saveStatus} onDismiss={actions.dismissNotice} />
-        <Stage snapshot={snapshot} onTap={actions.tap} onSurge={actions.surge} />
+        <Stage snapshot={snapshot} onTap={actions.tap} onSurge={actions.surge} onResolve={actions.resolveWaveforms} />
         <ZoneBanner zone={zone} lab={state.lab} />
         <TutorialCard state={state} onSkip={actions.skipTutorial} />
         <NotebookStrip notes={state.notes} />
@@ -111,7 +128,7 @@ export default function App(): ReactElement {
           <ExperimentDock state={state} onObserve={actions.observe} onNeutralize={actions.neutralize} />
         </div>
 
-        <TabBar active={tab} onSelect={setTab} hintTab={hintTab} badges={badges} />
+        <TabBar active={tab} onSelect={setTab} hintTab={hintTab} badges={badges} showFabric={showFabric} />
       </div>
 
       {state.introSeen ? null : <IntroSequence onDone={actions.finishIntro} />}
