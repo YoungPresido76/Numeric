@@ -35,6 +35,7 @@ import {
   ZONE_STABLE_MIN,
   ZONE_STRAINED_MIN,
   DRAIN_PER_FAILURE,
+  FABRIC_UNLOCK_ECHOES,
 } from './data';
 import { clamp, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
@@ -559,8 +560,13 @@ export function stepLab(state: GameState, dt: number, ps: number, costs: readonl
 
   let blackHole = false;
   if (lab.stability < ZONE_CRITICAL_MIN) {
-    if (lab.grace < 0) lab.grace = GRACE_SECONDS;
-    else lab.grace -= dt;
+    if (lab.grace < 0) {
+      lab.grace = GRACE_SECONDS;
+      // With Fabric open the last-chance window is a Continuum Tear that Threads can stitch closed.
+      if (s.echoesEarned >= FABRIC_UNLOCK_ECHOES) addNote(s, narrative.tearOpened());
+    } else {
+      lab.grace -= dt;
+    }
     if (lab.grace <= 0) blackHole = true;
   } else {
     lab.grace = -1;

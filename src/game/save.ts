@@ -7,6 +7,7 @@ import {
   RESEARCH_MAIN_MAX,
   RESEARCH_TREES,
   SYMMETRIC_MAX,
+  TEAR_LAYER_CAP,
   WAVE_STORE_CAP,
   ZONES,
   isUpgradeId,
@@ -350,6 +351,8 @@ function readFabric(value: unknown): FabricState {
     recentLabs: recent,
     pairs: Math.min(readCount(src['pairs']), SYMMETRIC_MAX),
     bestEchoes: readCount(src['bestEchoes']),
+    tears: readCount(src['tears']),
+    shattered: Math.min(readCount(src['shattered']), TEAR_LAYER_CAP),
   };
 }
 

@@ -28,6 +28,7 @@ import {
   echoMemory,
   growthOf,
   pairAura,
+  shatterMult,
   threadsFor,
   tickFabric,
 } from './fabric';
@@ -168,7 +169,8 @@ export function derive(state: GameState): Derived {
   const surgeFactor = state.surge.activeLeft > 0 ? SURGE_MULT : 1;
   const echoMult = echoMultFor(state.echoesEarned);
   const aura = pairAura(state.fabric);
-  const outputMult = upgradeGlobal * surgeFactor * echoMult * research.output * aura;
+  const shatter = shatterMult(state.fabric);
+  const outputMult = upgradeGlobal * surgeFactor * echoMult * research.output * aura * shatter;
   const psPerSecond = clampFinite(units[0] * rates[0] * outputMult);
 
   return {
@@ -177,6 +179,7 @@ export function derive(state: GameState): Derived {
     growth: growthOf(state.fabric),
     dilated,
     pairAura: aura,
+    shatterMult: shatter,
     upgradeGlobal,
     surgeFactor,
     echoMult,

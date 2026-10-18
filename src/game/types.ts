@@ -117,6 +117,10 @@ export interface FabricState {
   pairs: number;
   /** Most Echoes any single lab has paid. Feeds Echo Memory. */
   bestEchoes: number;
+  /** Continuum Tears stitched closed, ever. */
+  tears: number;
+  /** Shattered Reality Layers: one per stitched Tear, up to a cap. Each adds permanent production. */
+  shattered: number;
 }
 
 export interface SurgeState {
@@ -373,6 +377,8 @@ export interface Derived {
   dilated: boolean;
   /** Production multiplier from Symmetric Pairs. */
   pairAura: number;
+  /** Production multiplier from Shattered Reality Layers. */
+  shatterMult: number;
   upgradeGlobal: number;
   surgeFactor: number;
   echoMult: number;
@@ -411,6 +417,7 @@ export type GameAction =
   | { type: 'decoherence'; tier: Tier }
   | { type: 'wormhole'; at: number }
   | { type: 'dilate' }
+  | { type: 'stitch' }
   | { type: 'threadUpgrade'; id: ThreadUpgradeId }
   | { type: 'resolve' }
   | { type: 'surge' }

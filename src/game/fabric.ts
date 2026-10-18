@@ -7,6 +7,9 @@ import {
   FABRIC_UNLOCK_ECHOES,
   SYMMETRIC_AURA,
   SYMMETRIC_MAX,
+  TEAR_BASE_COST,
+  TEAR_LAYER_BONUS,
+  TEAR_LAYER_CAP,
   THREAD_DIVISOR,
   WAVE_RATE_TAU,
   WAVE_STORE_CAP,
@@ -34,6 +37,8 @@ export function createFabric(): FabricState {
     recentLabs: [],
     pairs: 0,
     bestEchoes: 0,
+    tears: 0,
+    shattered: 0,
   };
 }
 
@@ -99,6 +104,28 @@ export function echoMemory(fabric: FabricState): number {
 /** Production multiplier from Symmetric Pairs. */
 export function pairAura(fabric: FabricState): number {
   return 1 + SYMMETRIC_AURA * Math.min(fabric.pairs, SYMMETRIC_MAX);
+}
+
+/* ------------------------------------------------------------------ */
+/* Continuum Tear                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Production multiplier from Shattered Reality Layers. */
+export function shatterMult(fabric: FabricState): number {
+  return 1 + TEAR_LAYER_BONUS * Math.min(fabric.shattered, TEAR_LAYER_CAP);
+}
+
+/** Thread cost of stitching a Tear closed. Rises with every layer already earned. */
+export function tearCost(fabric: FabricState): number {
+  return TEAR_BASE_COST + Math.min(fabric.shattered, TEAR_LAYER_CAP);
+}
+
+/**
+ * A Tear is open while the last-chance window runs and Fabric is unlocked. If the
+ * window runs out unstitched the lab falls into the black hole as before.
+ */
+export function tearOpen(state: GameState): boolean {
+  return fabricUnlocked(state) && state.lab.grace > 0;
 }
 
 /** How a lab ended, judged by its lowest stability. */

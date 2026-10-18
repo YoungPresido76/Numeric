@@ -3,6 +3,8 @@ import {
   DILATION_COST,
   DILATION_SECONDS,
   TAPPING_COST,
+  TEAR_LAYER_CAP,
+  TEAR_STITCH_STABILITY,
   WAVE_EXP_FAST,
   WAVE_EXP_SLOW,
   WAVE_MAX,
@@ -17,7 +19,7 @@ import {
   WORMHOLE_MIN_SECONDS,
 } from './data';
 import { closeLab, derive } from './engine';
-import { amplitudeForThreads, fabricUnlocked, threadsFor } from './fabric';
+import { amplitudeForThreads, fabricUnlocked, tearCost, tearOpen, threadsFor } from './fabric';
 import { addNote, draft, random, riskMultiplier, shiftStability, zoneOf } from './lab';
 import { clamp, clampFinite, formatNumber } from './math';
 import { narrative } from './narrative';
@@ -138,6 +140,34 @@ export function activateDilation(state: GameState): GameState {
     dilation: { activeLeft: DILATION_SECONDS },
   };
   addNote(s, narrative.dilation());
+  return s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Continuum Tear                                                      */
+/* ------------------------------------------------------------------ */
+
+export function canStitch(state: GameState): boolean {
+  return tearOpen(state) && state.fabric.threads >= tearCost(state.fabric);
+}
+
+/**
+ * Spends Threads to stitch an open Tear closed. The lab survives with stability
+ * restored, the last-chance window ends, and a Shattered Reality Layer is added.
+ */
+export function stitchTear(state: GameState): GameState {
+  if (!canStitch(state)) return state;
+  const cost = tearCost(state.fabric);
+  const s = draft(state);
+  s.lab.grace = -1;
+  s.lab.stability = Math.max(s.lab.stability, TEAR_STITCH_STABILITY);
+  s.fabric = {
+    ...s.fabric,
+    threads: s.fabric.threads - cost,
+    tears: s.fabric.tears + 1,
+    shattered: Math.min(TEAR_LAYER_CAP, s.fabric.shattered + 1),
+  };
+  addNote(s, narrative.tearStitched(s.fabric.shattered));
   return s;
 }
 

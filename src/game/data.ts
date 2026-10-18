@@ -195,6 +195,16 @@ export const WAVE_SETBACK_CHANCE: Readonly<Record<Zone, number>> = {
 };
 export const WAVE_SETBACK_STABILITY = 5;
 
+/**
+ * Continuum Tear: once Fabric is open, the last-chance window before a black hole becomes a Tear
+ * that Threads can stitch closed. A stitch costs TEAR_BASE_COST plus one per layer already earned,
+ * restores stability, and adds a permanent Shattered Reality Layer.
+ */
+export const TEAR_BASE_COST = 2;
+export const TEAR_LAYER_CAP = 25;
+export const TEAR_LAYER_BONUS = 0.02;
+export const TEAR_STITCH_STABILITY = 45;
+
 /** Ancestral Legacy: Echo Memory adds this share of your best lab's Echoes to every Collapse. */
 export const ECHO_MEMORY_FRACTION = 0.1;
 /** Each Symmetric Pair adds this to production, up to SYMMETRIC_MAX pairs. */

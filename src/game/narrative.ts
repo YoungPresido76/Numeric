@@ -311,6 +311,20 @@ export const narrative = {
     );
   },
 
+  /** The last-chance window opened as a Continuum Tear. */
+  tearOpened(): Line {
+    return line('CONTINUUM TEAR: the record is splitting. Stitch it closed with Threads, or the lab goes with it.', 'alert', 'WARNING');
+  },
+
+  /** A Tear was stitched closed. */
+  tearStitched(layers: number): Line {
+    return line(
+      `Stitched. The lab holds, and a shattered layer settles into the record (${layers}). Do not look at the seam. - Vey`,
+      'good',
+      'LAB-NOTE',
+    );
+  },
+
   /** Cost Decoherence bought for a project. */
   decoherence(tier: Tier): Line {
     return line(`${AUTOMATED[tier].replace(' procurement', '')} costs stop climbing quite so fast. The ledger looks almost polite. - Vey`, 'good', 'LAB-NOTE');

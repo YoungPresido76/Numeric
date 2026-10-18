@@ -6,6 +6,7 @@ import {
   buyThreadUpgrade,
   installWormhole,
   resolveWaveforms,
+  stitchTear,
   weave,
 } from './fabricOps';
 import { addNotes, neutralize, noteForPurchase, observe } from './lab';
@@ -55,6 +56,8 @@ function apply(state: GameState, action: GameAction): GameState {
       return installWormhole(state, action.at);
     case 'dilate':
       return activateDilation(state);
+    case 'stitch':
+      return stitchTear(state);
     case 'threadUpgrade':
       return buyThreadUpgrade(state, action.id);
     case 'resolve':
