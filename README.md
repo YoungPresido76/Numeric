@@ -27,9 +27,11 @@ Framing: ψ is a research budget, buildings are research projects, taps are obse
 - **Four projects.** Qubits (Σ) add ψ. Superposition Gates (×), Entanglement Lattices (⊗) and Reality Branches (∥) each create the tier below. Cost growth is 1.22 / 1.65 / 1.85 / 2.05. Owning 10, 25 and 50 doubles output; Qubits and Gates also have a 100 milestone.
 - **Ten upgrades** are one-time boosts for the current lab.
 - **Surge** is ×2 output for 10 s, 45 s recharge. While it runs you can observe any experiment instantly.
-- **Experiments.** Every project above Qubits spawns experiments. Base success is 65%, +15% if observed within 5 s. Failure costs 8-15% of current ψ and 10-20 stability.
+- **Experiments are manual tasks.** Every project above Qubits starts a task with a clock: *earn* some ψ (sometimes without funding one tier), *fund* a project, *tap* the orb, or *hold* and fund nothing. Complete it for 15 s of production and +5 stability. Miss the clock or break the condition and the lab loses 8-15% of current ψ and 10-20 stability. Surge lets you observe any experiment, which completes its task instantly.
 - **Stability** is never shown as a number. Zones: Stable (70+), Strained (40-69), Critical (15-39), Collapse imminent (0-14). The background, orb, vignette and notebook change with the zone.
 - **Neutralize** a failure within 90 s for about 2% of ψ (escalating); it restores 15 stability. Ignored failures keep draining.
+- **Log.** Dr. Vey narrates in a single `[ LOG: ... ]` line: the old text deletes backward, a static burst plays, the new line types at about 30 characters per second, and a tap skips to the full text. A short opening plays once on a new game.
+- **Flavour.** Numbers pick up a faint double image when the lab is Strained or worse, and a `|ψ⟩` glyph appears beside the counter at very large values.
 - **Black hole.** After 20 s at zero stability the lab collapses and pays 0.5x Echoes.
 - **Collapse** publishes the lab for Echoes (ε): +10% production and 0.5% off costs each (max 30%). Echoes = floor(sqrt(run ψ / 2e11)) x a risk multiplier (1.0 up to 1.5x for surviving risky experiments).
 - **Legacy.** Banked Echoes give a capped starting ψ grant in the next lab, and the riskiest experiment you survived makes that project tier visible one tier earlier.
