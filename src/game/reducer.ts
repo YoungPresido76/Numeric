@@ -1,5 +1,8 @@
+import { buyAutobuyer, toggleAutobuyer } from './autobuyers';
 import { activateSurge, buyBuilding, buyUpgrade, collapse, derive, tap } from './engine';
-import { neutralize, noteForPurchase, observe } from './lab';
+import { addNotes, neutralize, noteForPurchase, observe } from './lab';
+import { narrative, type Line } from './narrative';
+import { buyResearch, isTreeComplete } from './research';
 import { syncTutorial } from './tutorial';
 import type { GameAction, GameState } from './types';
 
@@ -14,6 +17,26 @@ function apply(state: GameState, action: GameAction): GameState {
     }
     case 'upgrade':
       return buyUpgrade(state, action.id);
+    case 'research': {
+      const next = buyResearch(state, action.tree, action.node);
+      if (next === state) return state;
+      const lines: Line[] = [];
+      if (action.node === 'main') {
+        lines.push(narrative.researchMain(action.tree, next.research[action.tree].main, next.lab.nextId));
+      }
+      if (isTreeComplete(next.research[action.tree]) && !isTreeComplete(state.research[action.tree])) {
+        lines.push(narrative.researchComplete(action.tree));
+      }
+      return addNotes(next, lines);
+    }
+    case 'autoBuy': {
+      const installing = !state.autobuyers[action.tier].owned;
+      const next = buyAutobuyer(state, action.tier);
+      if (next === state) return state;
+      return installing ? addNotes(next, [narrative.autobuyerInstalled(action.tier)]) : next;
+    }
+    case 'autoToggle':
+      return toggleAutobuyer(state, action.tier);
     case 'surge':
       return activateSurge(state);
     case 'collapse':

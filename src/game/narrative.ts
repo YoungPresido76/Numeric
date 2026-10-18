@@ -1,6 +1,6 @@
 import { BUILDINGS, PROJECT_NAMES } from './data';
 import { formatNumber } from './math';
-import type { NoteTone, ProjectTier, Task, Tier } from './types';
+import type { NoteTone, ProjectTier, Task, Tier, TreeId } from './types';
 
 /** One notebook line before it is given an id. The text already carries its [ LABEL: ] tag. */
 export interface Line {
@@ -62,6 +62,19 @@ export function describeTask(task: Task): string {
       return `Fund nothing for ${seconds}s`;
   }
 }
+
+const TREE_SHORT: Readonly<Record<TreeId, string>> = {
+  grant: 'Grant Optimization',
+  observation: 'Deep Observation',
+  calibration: 'Experiment Calibration',
+};
+
+const AUTOMATED: Readonly<Record<Tier, string>> = {
+  0: 'Qubit procurement',
+  1: 'Gate procurement',
+  2: 'Lattice procurement',
+  3: 'Branch procurement',
+};
 
 export const narrative = {
   labOpened(lab: number, salt: number): Line {
@@ -245,5 +258,34 @@ export const narrative = {
       `From the last lab's close call: ${PROJECT_SHORT[tier].toLowerCase()} work will be visible earlier from now on.`,
       'good',
     );
+  },
+  /** A Main research upgrade reached a new rank. */
+  researchMain(tree: TreeId, rank: number, salt: number): Line {
+    const subject: Readonly<Record<TreeId, string>> = {
+      grant: 'The grant office',
+      observation: 'The observation team',
+      calibration: 'The calibration crew',
+    };
+    return line(
+      pick(
+        [
+          `${subject[tree]} signed off on stage ${rank} of ${TREE_SHORT[tree]}. - Vey`,
+          `${TREE_SHORT[tree]}, stage ${rank}: approved. The whole building feels it. - Vey`,
+        ],
+        salt,
+      ),
+      'good',
+      'LAB-NOTE',
+    );
+  },
+
+  /** A research tree finished: Main at 3/3 and both Subs at 8/8. */
+  researchComplete(tree: TreeId): Line {
+    return line(`${TREE_SHORT[tree]} is complete. Nothing left to optimize. Almost suspicious. - Vey`, 'good', 'LAB-NOTE');
+  },
+
+  /** An autobuyer was installed for a project. */
+  autobuyerInstalled(tier: Tier): Line {
+    return line(`${AUTOMATED[tier]} is automated now. The routine runs itself. - Vey`, 'good', 'LAB-NOTE');
   },
 };

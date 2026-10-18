@@ -18,9 +18,11 @@ import {
   SURGE_MULT,
   UPGRADE_BY_ID,
 } from './data';
+import { createAutobuyers } from './autobuyers';
 import { createHistory, createLab, addNotes, riskMultiplier, zoneOf } from './lab';
 import { clampFinite, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
+import { createResearch, researchBonuses } from './research';
 import type {
   BuyAmount,
   Derived,
@@ -48,6 +50,11 @@ export function createInitialState(now: number): GameState {
     upgrades: [],
     surge: { activeLeft: 0, cooldownLeft: 0 },
     echoes: 0,
+    echoesEarned: 0,
+    research: createResearch(),
+    treesCleared: false,
+    autobuyers: createAutobuyers(),
+    autoClock: 0,
     perks: [],
     lab: { ...lab, nextId: 2 },
     notes: [{ id: 1, text: opening.text, tone: opening.tone }],
@@ -99,6 +106,7 @@ export function echoMultFor(echoes: number): number {
 }
 
 export function derive(state: GameState): Derived {
+  const research = researchBonuses(state.research);
   const tierMult: Quad = [1, 1, 1, 1];
   let upgradeGlobal = 1;
   let tapFraction = BASE_TAP_FRACTION;
@@ -144,8 +152,8 @@ export function derive(state: GameState): Derived {
   ];
 
   const surgeFactor = state.surge.activeLeft > 0 ? SURGE_MULT : 1;
-  const echoMult = echoMultFor(state.echoes);
-  const outputMult = upgradeGlobal * surgeFactor * echoMult;
+  const echoMult = echoMultFor(state.echoesEarned);
+  const outputMult = upgradeGlobal * surgeFactor * echoMult * research.output;
   const psPerSecond = clampFinite(units[0] * rates[0] * outputMult);
 
   return {
@@ -156,12 +164,13 @@ export function derive(state: GameState): Derived {
     echoMult,
     outputMult,
     psPerSecond,
-    tapGain: clampFinite(1 + psPerSecond * tapFraction),
-    surgeDuration: SURGE_BASE_DURATION * surgeDurationMult,
+    tapGain: clampFinite(1 + psPerSecond * (tapFraction + research.tapFraction)),
+    surgeDuration: (SURGE_BASE_DURATION + research.surgeSeconds) * surgeDurationMult,
     surgeCooldown: SURGE_BASE_COOLDOWN * surgeCooldownMult,
     offlineEfficiency,
-    costDiscount: costDiscountFor(state.echoes),
+    costDiscount: costDiscountFor(state.echoesEarned) + research.costCut,
     zone: zoneOf(state.lab.stability),
+    research,
   };
 }
 
@@ -460,7 +469,8 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   const payout = echoPayout(state);
   const earned = outcome === 'blackHole' ? payout.blackHole : payout.published;
   const echoes = state.echoes + earned;
-  const legacyGrant = legacyGrantFor(echoes);
+  const echoesEarned = state.echoesEarned + earned;
+  const legacyGrant = legacyGrantFor(echoesEarned);
   const perkTier = state.lab.recovery?.tier ?? null;
   const perks =
     perkTier !== null && !state.perks.includes(perkTier) ? [...state.perks, perkTier] : state.perks;
@@ -500,6 +510,9 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     ...fresh,
     amplitude: START_AMPLITUDE + legacyGrant,
     echoes,
+    echoesEarned,
+    treesCleared: state.treesCleared,
+    autobuyers: state.autobuyers,
     perks,
     lab: createLab(state.lab.rng, state.lab.nextId),
     notes: state.notes.slice(-(MAX_NOTES - lines.length)),

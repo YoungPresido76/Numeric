@@ -35,6 +35,7 @@ import {
 } from './data';
 import { clamp, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
+import { researchBonuses } from './research';
 import type {
   Experiment,
   GameState,
@@ -260,7 +261,18 @@ function reachableTiers(s: GameState, costs: readonly number[], limit: number, p
   return tiers;
 }
 
+/** Scales a task's clock by the Experiment Calibration bonus. */
+function withClock(task: Task, mult: number): Task {
+  return { ...task, limit: task.limit * mult };
+}
+
 function makeTask(s: GameState, ps: number, costs: readonly number[]): Task {
+  const bonuses = researchBonuses(s.research);
+  const task = rollTask(s, ps, costs);
+  return bonuses.taskTime === 1 ? task : withClock(task, bonuses.taskTime);
+}
+
+function rollTask(s: GameState, ps: number, costs: readonly number[]): Task {
   const fundTiers = reachableTiers(s, costs, TASK_FUND_LIMIT, ps);
   const weights: [Task['kind'], number][] = [
     ['earn', TASK_WEIGHTS.earn],
@@ -380,18 +392,20 @@ function resolveExperiment(
     s.stats.observed += 1;
   }
 
+  const bonuses = researchBonuses(s.research);
   if (outcome.success) {
-    const payout = ps * SUCCESS_PAYOUT_SECONDS;
+    const observedMult = outcome.surge ? bonuses.observedPayout : 1;
+    const payout = ps * SUCCESS_PAYOUT_SECONDS * observedMult;
     s.amplitude += payout;
     s.runAmplitude += payout;
     s.stats.totalAmplitude += payout;
     lab.run.successes += 1;
-    shiftStability(s, SUCCESS_STABILITY, experiment.tier);
+    shiftStability(s, SUCCESS_STABILITY + bonuses.successStability, experiment.tier);
     addNote(s, narrative.success(experiment.tier, outcome.surge, lab.nextId));
     return;
   }
 
-  const loss = s.amplitude * randomBetween(s, FAIL_LOSS_MIN, FAIL_LOSS_MAX);
+  const loss = s.amplitude * randomBetween(s, FAIL_LOSS_MIN, FAIL_LOSS_MAX) * bonuses.failureLoss;
   s.amplitude -= loss;
   lab.run.fundsLost += loss;
   lab.run.failures += 1;

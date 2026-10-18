@@ -3,13 +3,19 @@ import {
   HISTORY_MAX_SAMPLES,
   MAX_NOTES,
   SAVE_KEY,
+  RESEARCH_MAIN_MAX,
+  RESEARCH_TREES,
   ZONES,
   isUpgradeId,
 } from './data';
+import { AUTOBUYER_MAX_LEVEL, createAutobuyer } from './autobuyers';
 import { createInitialState } from './engine';
 import { createHistory, createLab, createRunStats } from './lab';
 import { clamp, clampFinite } from './math';
+import { subCap } from './research';
 import type {
+  AutobuyerSet,
+  AutobuyerState,
   Experiment,
   Failure,
   GameState,
@@ -21,12 +27,14 @@ import type {
   NoteTone,
   ProjectTier,
   Quad,
+  ResearchState,
   RunStats,
   RunSummary,
   SurgeState,
   Task,
   TaskBase,
   Tier,
+  TreeState,
   Triple,
   UpgradeId,
   Zone,
@@ -286,6 +294,47 @@ function readPerks(value: unknown): ProjectTier[] {
   return perks;
 }
 
+function readRank(value: unknown, max: number): number {
+  return Math.min(max, readCount(value));
+}
+
+function readTree(value: unknown): TreeState {
+  const src = isRecord(value) ? value : {};
+  const main = readRank(src['main'], RESEARCH_MAIN_MAX);
+  const cap = subCap(main);
+  const subs: unknown[] = Array.isArray(src['subs']) ? (src['subs'] as unknown[]) : [];
+  return { main, subs: [readRank(subs[0], cap), readRank(subs[1], cap)] };
+}
+
+function readResearch(value: unknown): ResearchState {
+  const src = isRecord(value) ? value : {};
+  return {
+    grant: readTree(src['grant']),
+    observation: readTree(src['observation']),
+    calibration: readTree(src['calibration']),
+  };
+}
+
+function readAutobuyer(value: unknown): AutobuyerState {
+  const src = isRecord(value) ? value : {};
+  if (src['owned'] !== true) return createAutobuyer();
+  return {
+    owned: true,
+    level: readRank(src['level'], AUTOBUYER_MAX_LEVEL),
+    enabled: src['enabled'] !== false,
+  };
+}
+
+function readAutobuyers(value: unknown): AutobuyerSet {
+  const source: unknown[] = Array.isArray(value) ? (value as unknown[]) : [];
+  return [
+    readAutobuyer(source[0]),
+    readAutobuyer(source[1]),
+    readAutobuyer(source[2]),
+    readAutobuyer(source[3]),
+  ];
+}
+
 /**
  * Rebuilds a GameState from untrusted data. Every field is validated and
  * clamped, so a damaged or hand-edited save can never crash the game.
@@ -308,6 +357,15 @@ export function parseSave(raw: unknown, now: number): GameState | null {
   }
 
   const notes = readNotes(raw['notes'], base.notes);
+  const echoes = readCount(raw['echoes']);
+  // Saves from before spendable Echoes had no lifetime total: it equals the balance.
+  const echoesEarned = Math.max(echoes, readCount(raw['echoesEarned']));
+  const research = readResearch(raw['research']);
+  const treesCleared =
+    raw['treesCleared'] === true || RESEARCH_TREES.every((def) => {
+      const tree = research[def.id];
+      return tree.main >= RESEARCH_MAIN_MAX && tree.subs[0] >= subCap(RESEARCH_MAIN_MAX) && tree.subs[1] >= subCap(RESEARCH_MAIN_MAX);
+    });
 
   return {
     version: 2,
@@ -317,7 +375,12 @@ export function parseSave(raw: unknown, now: number): GameState | null {
     generated: readQuad(raw['generated'], false),
     upgrades,
     surge: readSurge(raw['surge']),
-    echoes: readCount(raw['echoes']),
+    echoes,
+    echoesEarned,
+    research,
+    treesCleared,
+    autobuyers: readAutobuyers(raw['autobuyers']),
+    autoClock: Math.min(readNumber(raw['autoClock'], 0), 1),
     perks: readPerks(raw['perks']),
     lab: readLab(raw['lab'], base.lab.rng, notes),
     notes,

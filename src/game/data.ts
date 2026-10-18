@@ -1,4 +1,16 @@
-import type { BuildingDef, ProjectTier, Tier, Triple, UpgradeDef, UpgradeId, Zone } from './types';
+import type {
+  AutoAmount,
+  BuildingDef,
+  ProjectTier,
+  Quad,
+  ResearchBonuses,
+  Tier,
+  TreeId,
+  Triple,
+  UpgradeDef,
+  UpgradeId,
+  Zone,
+} from './types';
 
 export const SAVE_KEY = 'numeric.save.v1';
 export const SAVE_VERSION = 2;
@@ -261,3 +273,182 @@ export const UPGRADE_BY_ID: Readonly<Record<UpgradeId, UpgradeDef>> = Object.fro
 export function isUpgradeId(value: unknown): value is UpgradeId {
   return typeof value === 'string' && (UPGRADE_IDS as readonly string[]).includes(value);
 }
+
+/* ------------------------------------------------------------------ */
+/* Research trees                                                      */
+/* ------------------------------------------------------------------ */
+
+/** The research section appears once a lab has produced this much, or after the first Collapse. */
+export const RESEARCH_UNLOCK_RUN = 2000;
+export const RESEARCH_MAIN_MAX = 3;
+/**
+ * Sub-upgrade cap while the Main upgrade is at rank 0, 1 and 2. A Main rank can
+ * only be bought once both Subs are at the current cap; the cap then grows.
+ * Once the Main upgrade is at rank 3 the cap stays at the last value.
+ */
+export const RESEARCH_SUB_CAPS: readonly number[] = [4, 6, 8];
+export const RESEARCH_SUB_MAX = 8;
+/** Each Main stage costs this many times the stage before. Sub-upgrades are not affected. */
+export const RESEARCH_STAGE_COST_MULT = 5;
+
+/** What a rank of a research node does. `per` is the effect of one rank. */
+export type ResearchEffect =
+  | { kind: 'output'; per: number }
+  | { kind: 'costCut'; per: number }
+  | { kind: 'observedPayout'; per: number }
+  | { kind: 'tapFraction'; per: number }
+  | { kind: 'surgeSeconds'; per: number }
+  | { kind: 'taskTime'; per: number }
+  | { kind: 'failureLoss'; per: number }
+  | { kind: 'successStability'; per: number };
+
+export interface ResearchSubDef {
+  name: string;
+  symbol: string;
+  /** Short effect text for one rank, shown on the row. */
+  perRank: string;
+  baseCost: number;
+  /** Each rank costs this much more than the one before. */
+  costGrowth: number;
+  effect: ResearchEffect;
+}
+
+export interface ResearchTreeDef {
+  id: TreeId;
+  name: string;
+  /** What the line improves. */
+  focus: string;
+  blurb: string;
+  mainName: string;
+  mainSymbol: string;
+  perRank: string;
+  /** Amplitude cost of Main stage 1. Each later stage costs RESEARCH_STAGE_COST_MULT times the one before. */
+  mainBaseCost: number;
+  mainEffect: ResearchEffect;
+  subs: readonly [ResearchSubDef, ResearchSubDef];
+}
+
+export const RESEARCH_TREES: readonly ResearchTreeDef[] = [
+  {
+    id: 'grant',
+    name: 'Grant Optimization',
+    focus: 'Funds',
+    blurb: 'Better proposals, leaner purchasing.',
+    mainName: 'Funding Strategy',
+    mainSymbol: '$',
+    perRank: 'ψ output +20%',
+    mainBaseCost: 200_000,
+    mainEffect: { kind: 'output', per: 0.2 },
+    subs: [
+      {
+        name: 'Grant Writing',
+        symbol: '✎',
+        perRank: 'ψ output +2%',
+        baseCost: 8_000,
+        costGrowth: 2.8,
+        effect: { kind: 'output', per: 0.02 },
+      },
+      {
+        name: 'Procurement',
+        symbol: '⌁',
+        perRank: 'Project costs −1%',
+        baseCost: 10_000,
+        costGrowth: 2.8,
+        effect: { kind: 'costCut', per: 0.01 },
+      },
+    ],
+  },
+  {
+    id: 'observation',
+    name: 'Deep Observation',
+    focus: 'Observation',
+    blurb: 'Look harder, look longer.',
+    mainName: 'Resolved Readings',
+    mainSymbol: '◉',
+    perRank: 'Observed experiments pay +25%',
+    mainBaseCost: 400_000,
+    mainEffect: { kind: 'observedPayout', per: 0.25 },
+    subs: [
+      {
+        name: 'Steady Hands',
+        symbol: '☝',
+        perRank: 'Taps gain +0.5% of ψ/s',
+        baseCost: 12_000,
+        costGrowth: 2.8,
+        effect: { kind: 'tapFraction', per: 0.005 },
+      },
+      {
+        name: 'Long Exposure',
+        symbol: '⏱',
+        perRank: 'Surge lasts +0.5s',
+        baseCost: 14_000,
+        costGrowth: 2.8,
+        effect: { kind: 'surgeSeconds', per: 0.5 },
+      },
+    ],
+  },
+  {
+    id: 'calibration',
+    name: 'Experiment Calibration',
+    focus: 'Experiments',
+    blurb: 'Fewer surprises, softer landings.',
+    mainName: 'Protocol Review',
+    mainSymbol: '⚖',
+    perRank: 'Experiment clocks +10%',
+    mainBaseCost: 300_000,
+    mainEffect: { kind: 'taskTime', per: 0.1 },
+    subs: [
+      {
+        name: 'Failure Dampening',
+        symbol: '▽',
+        perRank: 'Failures take 3% less ψ',
+        baseCost: 9_000,
+        costGrowth: 2.8,
+        effect: { kind: 'failureLoss', per: 0.03 },
+      },
+      {
+        name: 'Stability Margin',
+        symbol: '≋',
+        perRank: 'Successes restore +0.5 stability',
+        baseCost: 11_000,
+        costGrowth: 2.8,
+        effect: { kind: 'successStability', per: 0.5 },
+      },
+    ],
+  },
+];
+
+export const RESEARCH_TREE_IDS: readonly TreeId[] = RESEARCH_TREES.map((t) => t.id);
+
+export const RESEARCH_TREE_BY_ID: Readonly<Record<TreeId, ResearchTreeDef>> = Object.fromEntries(
+  RESEARCH_TREES.map((t) => [t.id, t]),
+) as Record<TreeId, ResearchTreeDef>;
+
+/** No research: every multiplier is neutral. */
+export const NO_RESEARCH_BONUSES: ResearchBonuses = {
+  output: 1,
+  costCut: 0,
+  observedPayout: 1,
+  tapFraction: 0,
+  surgeSeconds: 0,
+  taskTime: 1,
+  failureLoss: 1,
+  successStability: 0,
+};
+
+/* ------------------------------------------------------------------ */
+/* Autobuyers                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Autobuyers unlock once this many Echoes have been earned in total. */
+export const AUTOBUYER_UNLOCK_ECHOES = 10;
+/** Seconds between autobuyer triggers. */
+export const AUTOBUYER_INTERVAL = 1;
+/** Most triggers run in one tick, so a long frame never stalls the game. */
+export const AUTOBUYER_MAX_TRIGGERS = 5;
+/** The amount ladder. Level 0 is the autobuyer as bought; each step is an upgrade. */
+export const AUTOBUYER_AMOUNTS: readonly AutoAmount[] = [1, 2, 4, 16, 32, 'max'];
+/** Echo cost to install the autobuyer for each tier: Qubit 10, each later tier 4 times the one before. */
+export const AUTOBUYER_BASE_COST: Quad = [10, 40, 160, 640];
+/** Upgrade step n costs the install price times this to the power n. */
+export const AUTOBUYER_STEP_GROWTH = 10;

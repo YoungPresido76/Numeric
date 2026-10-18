@@ -24,6 +24,55 @@ export type UpgradeId =
 
 export type BuyAmount = 1 | 10 | 'max';
 
+/** The three research trees. */
+export type TreeId = 'grant' | 'observation' | 'calibration';
+
+/** A node in a research tree: the Main upgrade or one of its two Sub-upgrades. */
+export type ResearchNode = 'main' | 'subA' | 'subB';
+
+/** Ranks bought in one research tree this lab. */
+export interface TreeState {
+  /** Main ranks, 0 to 3. */
+  main: number;
+  /** Ranks of Sub-upgrade A and B. */
+  subs: [number, number];
+}
+
+export type ResearchState = Record<TreeId, TreeState>;
+
+/** One autobuyer, bought with Echoes. Persists through Collapse. */
+export interface AutobuyerState {
+  owned: boolean;
+  /** Step on the amount ladder, 0 to 5. Meaningless until owned. */
+  level: number;
+  enabled: boolean;
+}
+
+export type AutobuyerSet = [AutobuyerState, AutobuyerState, AutobuyerState, AutobuyerState];
+
+/** How many buildings an autobuyer buys per trigger. */
+export type AutoAmount = 1 | 2 | 4 | 16 | 32 | 'max';
+
+/** Flat bonuses from the research trees, summed from ranks. Recomputed with `derive`. */
+export interface ResearchBonuses {
+  /** Multiplier on all Amplitude output. */
+  output: number;
+  /** Fraction taken off project costs. */
+  costCut: number;
+  /** Multiplier on the payout of experiments resolved by observation. */
+  observedPayout: number;
+  /** Added to the tap fraction of ψ/s. */
+  tapFraction: number;
+  /** Seconds added to the base Surge duration. */
+  surgeSeconds: number;
+  /** Multiplier on every experiment's clock. */
+  taskTime: number;
+  /** Multiplier on the Amplitude a failure takes. */
+  failureLoss: number;
+  /** Stability points added to each successful experiment. */
+  successStability: number;
+}
+
 /** Stability is never shown as a number; the zone drives colour, motion and warnings. */
 export type Zone = 'stable' | 'strained' | 'critical' | 'imminent';
 
@@ -208,8 +257,18 @@ export interface GameState {
   generated: Quad;
   upgrades: UpgradeId[];
   surge: SurgeState;
-  /** Prestige currency. Persists through Collapse. */
+  /** Spendable Echoes. Persists through Collapse. */
   echoes: number;
+  /** Echoes earned over all labs. Drives the Echo bonuses, so spending never weakens them. */
+  echoesEarned: number;
+  /** Research tree ranks for the current lab. */
+  research: ResearchState;
+  /** True once all three research trees have been fully ranked in a single lab. */
+  treesCleared: boolean;
+  /** One autobuyer per building tier. */
+  autobuyers: AutobuyerSet;
+  /** Seconds accumulated toward the next autobuyer trigger. */
+  autoClock: number;
   /** Projects that appear one tier earlier in every lab. Earned from past labs. */
   perks: ProjectTier[];
   lab: LabState;
@@ -277,6 +336,7 @@ export interface Derived {
   offlineEfficiency: number;
   costDiscount: number;
   zone: Zone;
+  research: ResearchBonuses;
 }
 
 export interface OfflineReport {
@@ -295,6 +355,9 @@ export type GameAction =
   | { type: 'tap' }
   | { type: 'buy'; tier: Tier; amount: BuyAmount }
   | { type: 'upgrade'; id: UpgradeId }
+  | { type: 'research'; tree: TreeId; node: ResearchNode }
+  | { type: 'autoBuy'; tier: Tier }
+  | { type: 'autoToggle'; tier: Tier }
   | { type: 'surge' }
   | { type: 'collapse' }
   | { type: 'observe'; target: ObserveTarget }
