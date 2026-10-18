@@ -1,6 +1,4 @@
 import {
-  BASE_SUCCESS_CHANCE,
-  EXPERIMENT_WINDOW,
   FAIL_LOSS_MAX,
   FAIL_LOSS_MIN,
   FAIL_STABILITY_MAX,
@@ -9,25 +7,33 @@ import {
   GRANT_MILESTONES,
   HISTORY_MAX_SAMPLES,
   HISTORY_START_INTERVAL,
+  IDLE_NOTE_SECONDS,
   MAX_NOTES,
   NEUTRALIZE_COST_FRACTION,
   NEUTRALIZE_ESCALATION,
   NEUTRALIZE_STABILITY,
   NEUTRALIZE_WINDOW,
-  OBSERVE_BONUS,
-  OBSERVE_WINDOW,
   PROJECT_TIERS,
   RISK_MULT_MAX,
   SPAWN_RANGE,
   STABILITY_MAX,
   SUCCESS_PAYOUT_SECONDS,
   SUCCESS_STABILITY,
+  TASK_EARN_FACTOR,
+  TASK_EARN_LIMIT,
+  TASK_EARN_MIN,
+  TASK_FORBID_CHANCE,
+  TASK_FUND_LIMIT,
+  TASK_HOLD_LIMIT,
+  TASK_TAP_COUNT,
+  TASK_TAP_LIMIT,
+  TASK_WEIGHTS,
   ZONE_CRITICAL_MIN,
   ZONE_STABLE_MIN,
   ZONE_STRAINED_MIN,
   DRAIN_PER_FAILURE,
 } from './data';
-import { clamp } from './math';
+import { clamp, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
 import type {
   Experiment,
@@ -37,7 +43,10 @@ import type {
   NoteLine,
   ObserveTarget,
   ProjectTier,
+  Quad,
   RunStats,
+  Task,
+  TaskBase,
   Tier,
   Zone,
 } from './types';
@@ -129,7 +138,7 @@ export function createHistory(): History {
 function cloneLab(lab: LabState): LabState {
   return {
     ...lab,
-    experiments: lab.experiments.map((e) => ({ ...e })),
+    experiments: lab.experiments.map((e) => ({ ...e, task: { ...e.task }, base: { ...e.base, bought: [...e.base.bought] as Quad } })),
     failures: lab.failures.map((f) => ({ ...f })),
     spawn: [lab.spawn[0], lab.spawn[1], lab.spawn[2]],
     run: { ...lab.run, byTier: [...lab.run.byTier] },
@@ -209,9 +218,9 @@ function shiftStability(s: GameState, delta: number, project: ProjectTier | null
 /* Experiments                                                         */
 /* ------------------------------------------------------------------ */
 
-/** An experiment can be observed in its first seconds, or at any age while Surge is active. */
-export function canObserve(experiment: Experiment, surgeActive: boolean): boolean {
-  return surgeActive || experiment.age <= OBSERVE_WINDOW;
+/** Surge lets the player observe an experiment, which completes its task instantly. */
+export function canObserve(_experiment: Experiment, surgeActive: boolean): boolean {
+  return surgeActive;
 }
 
 /** Cost to neutralize a failure right now. Escalates with each repair this lab. */
@@ -221,31 +230,164 @@ export function neutralizeCost(state: GameState): number {
   return Math.max(1, raw);
 }
 
-function startExperiment(s: GameState, tier: ProjectTier): void {
-  s.lab.experiments.push({ id: s.lab.nextId, tier, age: 0 });
-  s.lab.nextId += 1;
-  addNote(s, narrative.experimentStarted(tier, s.lab.nextId));
+/* ------------------------------------------------------------------ */
+/* Tasks                                                               */
+/* ------------------------------------------------------------------ */
+
+type TaskVerdict = 'pending' | 'done' | 'broken' | 'late';
+
+function sum(values: readonly number[]): number {
+  return values.reduce((total, value) => total + value, 0);
 }
 
-function resolveExperiment(s: GameState, experiment: Experiment, observed: boolean, ps: number): void {
+function captureBase(s: GameState): TaskBase {
+  return {
+    run: s.runAmplitude,
+    bought: [s.bought[0], s.bought[1], s.bought[2], s.bought[3]],
+    taps: s.stats.taps,
+    upgrades: s.upgrades.length,
+  };
+}
+
+/** Highest tier the player could plausibly fund soon: one past what they own, capped at Branch. */
+function reachableTiers(s: GameState, costs: readonly number[], limit: number, ps: number): Tier[] {
+  const reach = s.amplitude + ps * limit * 0.7;
+  const tiers: Tier[] = [];
+  for (const tier of [0, 1, 2, 3] as const) {
+    if (tier > 0 && s.bought[tier - 1] <= 0) continue;
+    if ((costs[tier] ?? Infinity) <= reach) tiers.push(tier);
+  }
+  return tiers;
+}
+
+function makeTask(s: GameState, ps: number, costs: readonly number[]): Task {
+  const fundTiers = reachableTiers(s, costs, TASK_FUND_LIMIT, ps);
+  const weights: [Task['kind'], number][] = [
+    ['earn', TASK_WEIGHTS.earn],
+    ['fund', fundTiers.length > 0 ? TASK_WEIGHTS.fund : 0],
+    ['tap', TASK_WEIGHTS.tap],
+    ['hold', TASK_WEIGHTS.hold],
+  ];
+  const total = sum(weights.map(([, weight]) => weight));
+  let roll = random(s) * total;
+  let kind: Task['kind'] = 'earn';
+  for (const [candidate, weight] of weights) {
+    if (roll < weight) {
+      kind = candidate;
+      break;
+    }
+    roll -= weight;
+  }
+
+  switch (kind) {
+    case 'fund': {
+      const tier = fundTiers[Math.floor(random(s) * fundTiers.length)] ?? 0;
+      return { kind, tier, limit: TASK_FUND_LIMIT };
+    }
+    case 'tap':
+      return { kind, count: TASK_TAP_COUNT, limit: TASK_TAP_LIMIT };
+    case 'hold':
+      return { kind, limit: TASK_HOLD_LIMIT };
+    case 'earn': {
+      const owned: Tier[] = ([0, 1, 2, 3] as const).filter((tier) => s.bought[tier] > 0);
+      const forbid =
+        owned.length > 1 && random(s) < TASK_FORBID_CHANCE
+          ? (owned[Math.floor(random(s) * owned.length)] ?? null)
+          : null;
+      return {
+        kind,
+        target: Math.max(TASK_EARN_MIN, ps * TASK_EARN_LIMIT * TASK_EARN_FACTOR),
+        forbid,
+        limit: TASK_EARN_LIMIT,
+      };
+    }
+  }
+}
+
+function judge(s: GameState, experiment: Experiment): TaskVerdict {
+  const { task, base } = experiment;
+  const late = experiment.age >= task.limit;
+  switch (task.kind) {
+    case 'earn':
+      if (task.forbid !== null && s.bought[task.forbid] > base.bought[task.forbid]) return 'broken';
+      if (s.runAmplitude - base.run >= task.target) return 'done';
+      return late ? 'late' : 'pending';
+    case 'fund':
+      if (s.bought[task.tier] > base.bought[task.tier]) return 'done';
+      return late ? 'late' : 'pending';
+    case 'tap':
+      if (s.stats.taps - base.taps >= task.count) return 'done';
+      return late ? 'late' : 'pending';
+    case 'hold':
+      if (sum(s.bought) > sum(base.bought) || s.upgrades.length > base.upgrades) return 'broken';
+      return late ? 'done' : 'pending';
+  }
+}
+
+export interface TaskStatus {
+  /** 0 to 1 progress toward completing the task. */
+  fraction: number;
+  label: string;
+}
+
+/** Progress shown on the experiment card. */
+export function taskStatus(state: GameState, experiment: Experiment): TaskStatus {
+  const { task, base } = experiment;
+  switch (task.kind) {
+    case 'earn': {
+      const gained = Math.max(0, state.runAmplitude - base.run);
+      return {
+        fraction: clamp(gained / task.target, 0, 1),
+        label: `${formatNumber(gained)} / ${formatNumber(task.target)} ψ`,
+      };
+    }
+    case 'fund': {
+      const done = state.bought[task.tier] > base.bought[task.tier];
+      return { fraction: done ? 1 : 0, label: done ? 'Funded' : 'Not funded yet' };
+    }
+    case 'tap': {
+      const taps = Math.max(0, state.stats.taps - base.taps);
+      return { fraction: clamp(taps / task.count, 0, 1), label: `${Math.min(taps, task.count)} / ${task.count} taps` };
+    }
+    case 'hold':
+      return { fraction: clamp(experiment.age / task.limit, 0, 1), label: 'Holding steady' };
+  }
+}
+
+function startExperiment(s: GameState, tier: ProjectTier, ps: number, costs: readonly number[]): void {
+  const task = makeTask(s, ps, costs);
+  s.lab.experiments.push({ id: s.lab.nextId, tier, age: 0, task, base: captureBase(s) });
+  s.lab.nextId += 1;
+  addNote(s, narrative.experimentStarted(tier, task, s.lab.nextId));
+}
+
+/**
+ * Closes an experiment. `success` pays out and steadies the lab; otherwise it
+ * fails. `surge` marks an instant Surge observation, `broken` a failed condition.
+ */
+function resolveExperiment(
+  s: GameState,
+  experiment: Experiment,
+  outcome: { success: boolean; surge: boolean; broken: boolean },
+  ps: number,
+): void {
   const lab = s.lab;
   lab.experiments = lab.experiments.filter((e) => e.id !== experiment.id);
   lab.run.experiments += 1;
   s.stats.experiments += 1;
-  if (observed) {
+  if (outcome.surge) {
     lab.run.observed += 1;
     s.stats.observed += 1;
   }
 
-  const chance = BASE_SUCCESS_CHANCE + (observed ? OBSERVE_BONUS : 0);
-  if (random(s) < chance) {
+  if (outcome.success) {
     const payout = ps * SUCCESS_PAYOUT_SECONDS;
     s.amplitude += payout;
     s.runAmplitude += payout;
     s.stats.totalAmplitude += payout;
     lab.run.successes += 1;
     shiftStability(s, SUCCESS_STABILITY, experiment.tier);
-    addNote(s, narrative.success(experiment.tier, observed, lab.nextId));
+    addNote(s, narrative.success(experiment.tier, outcome.surge, lab.nextId));
     return;
   }
 
@@ -257,10 +399,10 @@ function resolveExperiment(s: GameState, experiment: Experiment, observed: boole
   shiftStability(s, -randomBetween(s, FAIL_STABILITY_MIN, FAIL_STABILITY_MAX), null);
   lab.failures.push({ id: lab.nextId, tier: experiment.tier, left: NEUTRALIZE_WINDOW });
   lab.nextId += 1;
-  addNote(s, narrative.failure(experiment.tier, lab.nextId));
+  addNote(s, narrative.failure(experiment.tier, outcome.broken, lab.nextId));
 }
 
-/** Observes one experiment, or every observable one, resolving it immediately with the bonus. */
+/** Observes one experiment, or every one, under Surge. Each completes its task instantly. */
 export function observe(state: GameState, target: ObserveTarget, ps: number): GameState {
   const surgeActive = state.surge.activeLeft > 0;
   const hits = state.lab.experiments.filter(
@@ -268,7 +410,9 @@ export function observe(state: GameState, target: ObserveTarget, ps: number): Ga
   );
   if (hits.length === 0) return state;
   const s = draft(state);
-  for (const experiment of hits) resolveExperiment(s, experiment, true, ps);
+  for (const experiment of hits) {
+    resolveExperiment(s, experiment, { success: true, surge: true, broken: false }, ps);
+  }
   return s;
 }
 
@@ -318,11 +462,12 @@ export interface LabStep {
 }
 
 /**
- * Advances the lab by `dt` seconds of active play: schedules and ages
- * experiments, drains stability for open failures, runs the last-chance window
- * and writes notebook lines. Production is integrated separately by the engine.
+ * Advances the lab by `dt` seconds of active play: schedules experiments and
+ * judges their tasks, drains stability for open failures, runs the last-chance
+ * window and writes notebook lines. `costs` is the price of the next building
+ * of each tier. Production is integrated separately by the engine.
  */
-export function stepLab(state: GameState, dt: number, ps: number): LabStep {
+export function stepLab(state: GameState, dt: number, ps: number, costs: readonly number[]): LabStep {
   const s = draft(state);
   const lab = s.lab;
   const zoneBefore = zoneOf(lab.stability);
@@ -346,13 +491,20 @@ export function stepLab(state: GameState, dt: number, ps: number): LabStep {
       lab.spawn[index] = 10;
       continue;
     }
-    startExperiment(s, tier);
+    startExperiment(s, tier, ps, costs);
     lab.spawn[index] = randomBetween(s, range[0], range[1]);
   }
 
   for (const experiment of lab.experiments) experiment.age += dt;
-  for (const experiment of lab.experiments.filter((e) => e.age >= EXPERIMENT_WINDOW)) {
-    resolveExperiment(s, experiment, false, ps);
+  for (const experiment of lab.experiments.slice()) {
+    const verdict = judge(s, experiment);
+    if (verdict === 'pending') continue;
+    resolveExperiment(
+      s,
+      experiment,
+      { success: verdict === 'done', surge: false, broken: verdict === 'broken' },
+      ps,
+    );
   }
 
   for (const failure of lab.failures) failure.left -= dt;
@@ -372,6 +524,10 @@ export function stepLab(state: GameState, dt: number, ps: number): LabStep {
   }
 
   const zoneAfter = zoneOf(lab.stability);
+  const idleTick = Math.floor(lab.run.seconds / IDLE_NOTE_SECONDS) > Math.floor((lab.run.seconds - dt) / IDLE_NOTE_SECONDS);
+  if (idleTick && zoneAfter === 'stable' && lab.run.seconds > IDLE_NOTE_SECONDS) {
+    addNote(s, narrative.idle(lab.nextId));
+  }
   if (zoneRank(zoneAfter) > zoneRank(zoneBefore)) {
     if (zoneAfter === 'strained') addNote(s, narrative.strained(lab.lastCause));
     else if (zoneAfter === 'critical') addNote(s, narrative.critical(lab.lastCause));

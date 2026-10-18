@@ -60,15 +60,25 @@ export const SPAWN_RANGE: readonly (readonly [number, number])[] = [
   [150, 260],
   [120, 220],
 ];
-/** Seconds an experiment stays superposed before it resolves on its own. */
-export const EXPERIMENT_WINDOW = 40;
-/** Observing within this many seconds of the start adds the observation bonus. */
-export const OBSERVE_WINDOW = 5;
-export const BASE_SUCCESS_CHANCE = 0.65;
-export const OBSERVE_BONUS = 0.15;
-/** A successful experiment releases this many seconds of current production as funding. */
-export const SUCCESS_PAYOUT_SECONDS = 10;
-export const SUCCESS_STABILITY = 3;
+/** A completed task releases this many seconds of current production as funding. */
+export const SUCCESS_PAYOUT_SECONDS = 15;
+export const SUCCESS_STABILITY = 5;
+
+/** Task shapes. Limits are seconds on the clock. */
+export const TASK_EARN_LIMIT = 30;
+/** The earn target is this multiple of what passive production alone would give. */
+export const TASK_EARN_FACTOR = 1.15;
+export const TASK_EARN_MIN = 50;
+/** Chance that an earn task also forbids funding one tier you own. */
+export const TASK_FORBID_CHANCE = 0.4;
+export const TASK_FUND_LIMIT = 45;
+export const TASK_TAP_LIMIT = 20;
+export const TASK_TAP_COUNT = 25;
+export const TASK_HOLD_LIMIT = 25;
+/** Relative odds of each task. Fund is only offered when something is within reach. */
+export const TASK_WEIGHTS = { earn: 3, fund: 3, tap: 2, hold: 2 } as const;
+/** Seconds of a stable run between unprompted notebook lines. */
+export const IDLE_NOTE_SECONDS = 150;
 
 /** A failure takes this fraction of current Amplitude and this much stability. */
 export const FAIL_LOSS_MIN = 0.08;

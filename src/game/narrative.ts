@@ -1,19 +1,30 @@
-import { PROJECT_NAMES } from './data';
-import type { NoteTone, ProjectTier, Tier } from './types';
+import { BUILDINGS, PROJECT_NAMES } from './data';
+import { formatNumber } from './math';
+import type { NoteTone, ProjectTier, Task, Tier } from './types';
 
-/** One notebook line before it is given an id. */
+/** One notebook line before it is given an id. The text already carries its [ LABEL: ] tag. */
 export interface Line {
   text: string;
   tone: NoteTone;
 }
+
+type Label = 'LOG' | 'LAB-NOTE' | 'MEMO' | 'ALERT' | 'WARNING' | null;
+
+const DEFAULT_LABEL: Readonly<Record<NoteTone, Label>> = {
+  info: 'LOG',
+  good: 'LOG',
+  warn: 'MEMO',
+  alert: 'ALERT',
+};
 
 function pick(bank: readonly string[], salt: number): string {
   const index = Math.abs(Math.floor(salt)) % bank.length;
   return bank[index] ?? bank[0] ?? '';
 }
 
-function line(text: string, tone: NoteTone): Line {
-  return { text, tone };
+/** Builds a line. The tag comes from the tone unless one is given; null leaves the text bare. */
+function line(text: string, tone: NoteTone, label: Label = DEFAULT_LABEL[tone]): Line {
+  return { text: label === null ? text : `${label}: ${text}`, tone };
 }
 
 /** The colleague who tends each project, used to name the cause of trouble. */
@@ -28,6 +39,29 @@ const PROJECT_SHORT: Readonly<Record<ProjectTier, string>> = {
   2: 'Lattice',
   3: 'Branch reactor',
 };
+
+const READINGS: Readonly<Record<ProjectTier, string>> = {
+  1: 'Gate readings',
+  2: 'Lattice readings',
+  3: 'Branch readings',
+};
+
+/** Plain-language description of a task, as shown on the experiment card. */
+export function describeTask(task: Task): string {
+  const seconds = Math.round(task.limit);
+  switch (task.kind) {
+    case 'earn': {
+      const without = task.forbid === null ? '' : `, without funding ${BUILDINGS[task.forbid].name}s`;
+      return `Earn ${formatNumber(task.target)} ψ in ${seconds}s${without}`;
+    }
+    case 'fund':
+      return `Fund a ${BUILDINGS[task.tier].name} within ${seconds}s`;
+    case 'tap':
+      return `Tap the orb ${task.count} times in ${seconds}s`;
+    case 'hold':
+      return `Fund nothing for ${seconds}s`;
+  }
+}
 
 export const narrative = {
   labOpened(lab: number, salt: number): Line {
@@ -66,11 +100,11 @@ export const narrative = {
         );
       case 1:
         return line(
-          'Gate array online. Dr. Okafor says experiments will start arriving. Watch them closely and observe early.',
+          'Gate array online. Dr. Okafor says experiments will start arriving. Each one is a task with a clock.',
           'good',
         );
       case 2:
-        return line('Lattice linked. Dr. Vey signs off on the wiring. The gates now move together.', 'good');
+        return line('Lattice linked. Dr. Vey signs off on the wiring. The gates now move together. - Vey', 'good');
       case 3:
         return line('A branch reactor forked a parallel run. Nobody can say which copy is ours.', 'good');
     }
@@ -86,26 +120,37 @@ export const narrative = {
     return line(pick(bank, index + salt), 'good');
   },
 
-  experimentStarted(tier: ProjectTier, salt: number): Line {
+  /** An unprompted line while the lab is stable. */
+  idle(salt: number): Line {
     return line(
       pick(
         [
-          `${PROJECT_NAMES[tier]} started. Unresolved until observed.`,
-          `${PROJECT_NAMES[tier]} is running. It is in superposition for now.`,
+          'Funding steady. Qubits humming along. Nothing to report today. - Vey',
+          'Instruments calibrated. The coffee is, for once, hot. - Vey',
+          'Quiet shift. The numbers are doing what numbers do. - Vey',
         ],
         salt,
       ),
       'info',
+      'LAB-NOTE',
     );
   },
 
-  success(tier: ProjectTier, observed: boolean, salt: number): Line {
-    if (observed) {
+  experimentStarted(tier: ProjectTier, task: Task, salt: number): Line {
+    const lead = pick(
+      [`${PROJECT_NAMES[tier]} needs a result.`, `${PROJECT_NAMES[tier]} is waiting on us.`],
+      salt,
+    );
+    return line(`${lead} ${describeTask(task)}.`, 'info');
+  },
+
+  success(tier: ProjectTier, surge: boolean, salt: number): Line {
+    if (surge) {
       return line(
         pick(
           [
-            `${PROJECT_NAMES[tier]}: observed, signal clean. Funds released.`,
-            `${PROJECT_NAMES[tier]} resolved under observation. It held.`,
+            `${PROJECT_NAMES[tier]}: observed under Surge, resolved instantly. Funds released.`,
+            `${PROJECT_NAMES[tier]} collapsed into the right answer the moment we looked.`,
           ],
           salt,
         ),
@@ -115,8 +160,8 @@ export const narrative = {
     return line(
       pick(
         [
-          `${PROJECT_NAMES[tier]} closed unwatched. The result held, this time.`,
-          `${PROJECT_NAMES[tier]} resolved on its own and paid out late.`,
+          `${PROJECT_NAMES[tier]}: task complete. Funds released.`,
+          `${PROJECT_NAMES[tier]} delivered. ${OWNER[tier]} approves the next tranche.`,
         ],
         salt,
       ),
@@ -124,12 +169,18 @@ export const narrative = {
     );
   },
 
-  failure(tier: ProjectTier, salt: number): Line {
+  failure(tier: ProjectTier, broken: boolean, salt: number): Line {
+    if (broken) {
+      return line(
+        `${PROJECT_NAMES[tier]} failed: the condition was broken. ${OWNER[tier]} wants it repaired.`,
+        'warn',
+      );
+    }
     return line(
       pick(
         [
-          `${PROJECT_NAMES[tier]} failed. Funding takes a hit. ${OWNER[tier]} flags the cause.`,
-          `${PROJECT_NAMES[tier]} collapsed the wrong way. ${OWNER[tier]} wants it repaired.`,
+          `${PROJECT_NAMES[tier]} missed its deadline. Funding takes a hit. ${OWNER[tier]} flags the cause.`,
+          `${PROJECT_NAMES[tier]} ran out of time. ${OWNER[tier]} wants it repaired.`,
         ],
         salt,
       ),
@@ -158,29 +209,21 @@ export const narrative = {
   },
 
   strained(cause: ProjectTier | null): Line {
-    switch (cause) {
-      case 1:
-        return line('Gate calibration drifting. Dr. Okafor wants a recheck.', 'warn');
-      case 2:
-        return line('Lattice funding thin, Dr. Vey.', 'warn');
-      case 3:
-        return line('The branch reactor is diverging from plan. Mira asks for a report.', 'warn');
-      case null:
-        return line('The lab feels strained. Something is slipping.', 'warn');
-    }
+    const subject = cause === null ? 'Readings' : READINGS[cause];
+    return line(`${subject} came in late again. Keeping an eye on it. - Vey`, 'warn', 'MEMO');
   },
 
   critical(cause: ProjectTier | null): Line {
-    const who = cause === null ? 'The lab' : PROJECT_SHORT[cause];
-    return line(`Critical: ${who} is failing and the building is noticing. One more bad run could end this lab.`, 'alert');
+    const subject = cause === null ? 'Project' : PROJECT_SHORT[cause];
+    return line(`${subject} funding is bleeding out fast. Need to neutralize this before it spreads.`, 'alert', 'ALERT');
   },
 
   imminent(): Line {
-    return line('Collapse imminent. Repair something now, or publish before the lab falls in on itself.', 'alert');
+    return line('Containment is failing. Brace for reset.', 'alert', 'WARNING');
   },
 
   stabilised(): Line {
-    return line('Stability recovered. Everyone exhales.', 'good');
+    return line('Crisis averted. Numbers stabilizing. Back to work. - Vey', 'good', 'LOG');
   },
 
   published(lab: number, echoes: number): Line {
@@ -192,11 +235,9 @@ export const narrative = {
     );
   },
 
-  blackHole(lab: number): Line {
-    return line(
-      `Lab ${lab} fell into its own singularity. Dr. Vey's last note: "Publish earlier next time."`,
-      'alert',
-    );
+  /** Reused for every black-hole collapse. */
+  blackHole(): Line {
+    return line('MEMORY RECORD TERMINATED: Timeline unthreaded. Rewinding...', 'alert', null);
   },
 
   perk(tier: ProjectTier): Line {

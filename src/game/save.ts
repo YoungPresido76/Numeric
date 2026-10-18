@@ -24,6 +24,9 @@ import type {
   RunStats,
   RunSummary,
   SurgeState,
+  Task,
+  TaskBase,
+  Tier,
   Triple,
   UpgradeId,
   Zone,
@@ -89,6 +92,44 @@ function readZone(value: unknown): Zone {
   return typeof value === 'string' && (ZONES as readonly string[]).includes(value)
     ? (value as Zone)
     : 'stable';
+}
+
+function readTier(value: unknown): Tier | null {
+  return value === 0 || value === 1 || value === 2 || value === 3 ? value : null;
+}
+
+function readTask(value: unknown): Task | null {
+  if (!isRecord(value)) return null;
+  const limit = readNumber(value['limit'], 0, 0);
+  if (limit <= 0) return null;
+  switch (value['kind']) {
+    case 'earn': {
+      const target = readNumber(value['target'], 0, 0);
+      return target > 0 ? { kind: 'earn', target, forbid: readTier(value['forbid']), limit } : null;
+    }
+    case 'fund': {
+      const tier = readTier(value['tier']);
+      return tier === null ? null : { kind: 'fund', tier, limit };
+    }
+    case 'tap': {
+      const count = readCount(value['count']);
+      return count > 0 ? { kind: 'tap', count, limit } : null;
+    }
+    case 'hold':
+      return { kind: 'hold', limit };
+    default:
+      return null;
+  }
+}
+
+function readTaskBase(value: unknown): TaskBase {
+  const src = isRecord(value) ? value : {};
+  return {
+    run: readNumber(src['run'], 0),
+    bought: readQuad(src['bought'], true),
+    taps: readCount(src['taps']),
+    upgrades: readCount(src['upgrades']),
+  };
 }
 
 function readList(value: unknown, max: number): unknown[] {
@@ -161,7 +202,10 @@ function readLab(value: unknown, seed: number, notes: NoteLine[]): LabState {
     const id = readCount(entry['id']);
     if (tier === null || usedIds.has(id)) continue;
     usedIds.add(id);
-    experiments.push({ id, tier, age: readNumber(entry['age'], 0) });
+    // Experiments saved before tasks existed have no task and are dropped.
+    const task = readTask(entry['task']);
+    if (task === null) continue;
+    experiments.push({ id, tier, age: readNumber(entry['age'], 0), task, base: readTaskBase(entry['base']) });
   }
   for (const entry of readList(src['failures'], MAX_LIST)) {
     if (!isRecord(entry)) continue;
@@ -296,6 +340,9 @@ export function parseSave(raw: unknown, now: number): GameState | null {
       sound: typeof settings['sound'] === 'boolean' ? settings['sound'] : true,
     },
     lastSaved: Math.min(readNumber(raw['lastSaved'], now), now),
+    // Saves from before the opening existed belong to returning players.
+    introSeen:
+      raw['introSeen'] === true || readCount(stats['taps']) > 0 || readNumber(stats['playSeconds'], 0) > 0,
   };
 }
 

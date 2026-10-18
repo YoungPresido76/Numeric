@@ -30,6 +30,8 @@ function apply(state: GameState, action: GameAction): GameState {
         : { ...state, settings: { ...state.settings, sound: action.value } };
     case 'skipTutorial':
       return { ...state, tutorial: { ...state.tutorial, done: true } };
+    case 'finishIntro':
+      return state.introSeen ? state : { ...state, introSeen: true };
   }
 }
 

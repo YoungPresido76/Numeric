@@ -69,10 +69,10 @@ export const TUTORIAL_STEPS: readonly TutorialStepDef[] = [
   },
   {
     id: 'experiment',
-    title: 'Observe an experiment',
-    body: 'Experiments stay superposed until observed. Observe one in its first 5 seconds for +15% success. A failure costs funds and stability; neutralize it to recover.',
+    title: 'Run an experiment',
+    body: 'Each experiment is a task with a clock: earn, fund, tap or hold. Finish it for funds and stability. Miss it and the lab takes a hit you must repair. Surge lets you observe one instantly.',
     hintTab: 'lab',
-    isComplete: (s) => s.stats.observed >= 1 || s.stats.experiments >= 3,
+    isComplete: (s) => s.lab.run.successes >= 1 || s.stats.experiments >= 3,
     isVisible: (s) => s.lab.experiments.length > 0 || s.stats.experiments > 0,
   },
   {

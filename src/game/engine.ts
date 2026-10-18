@@ -65,6 +65,7 @@ export function createInitialState(now: number): GameState {
     tutorial: { step: 0, done: false },
     settings: { sound: true },
     lastSaved: now,
+    introSeen: false,
   };
 }
 
@@ -488,7 +489,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   };
 
   const lines: Line[] = [
-    outcome === 'blackHole' ? narrative.blackHole(closed) : narrative.published(closed, earned),
+    outcome === 'blackHole' ? narrative.blackHole() : narrative.published(closed, earned),
     narrative.labOpened(closed + 1, state.lab.nextId),
   ];
   if (legacyGrant > 0) lines.push(narrative.legacy(legacyGrant, formatNumber(legacyGrant)));
@@ -511,6 +512,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     tutorial: state.tutorial,
     settings: state.settings,
     lastSaved: state.lastSaved,
+    introSeen: state.introSeen,
   };
   return addNotes(next, lines);
 }

@@ -66,12 +66,39 @@ export interface NoteLine {
   tone: NoteTone;
 }
 
-/** An in-progress experiment, superposed until observed or until its window ends. */
+/** The kind of manual task an experiment asks for. */
+export type TaskKind = 'earn' | 'fund' | 'tap' | 'hold';
+
+/**
+ * What the player must do before the experiment's clock runs out.
+ * - earn: gain `target` ψ, optionally without funding one tier.
+ * - fund: buy at least one of `tier`.
+ * - tap: tap the orb `count` times.
+ * - hold: fund nothing at all until the clock runs out.
+ */
+export type Task =
+  | { kind: 'earn'; target: number; forbid: Tier | null; limit: number }
+  | { kind: 'fund'; tier: Tier; limit: number }
+  | { kind: 'tap'; count: number; limit: number }
+  | { kind: 'hold'; limit: number };
+
+/** What the game looked like when a task began, so progress can be measured. */
+export interface TaskBase {
+  /** `runAmplitude` at the start. */
+  run: number;
+  bought: Quad;
+  taps: number;
+  upgrades: number;
+}
+
+/** An in-progress experiment: a task with a deadline. */
 export interface Experiment {
   id: number;
   tier: ProjectTier;
   /** Seconds since the experiment started. */
   age: number;
+  task: Task;
+  base: TaskBase;
 }
 
 /** A failed experiment that can still be neutralized. */
@@ -195,6 +222,8 @@ export interface GameState {
   settings: Settings;
   /** Epoch ms of the last save. Used to compute offline progress. */
   lastSaved: number;
+  /** True once the opening narrative has played. */
+  introSeen: boolean;
 }
 
 export interface BuildingDef {
@@ -272,4 +301,5 @@ export type GameAction =
   | { type: 'neutralize'; id: number }
   | { type: 'dismissSummary' }
   | { type: 'setSound'; value: boolean }
-  | { type: 'skipTutorial' };
+  | { type: 'skipTutorial' }
+  | { type: 'finishIntro' };

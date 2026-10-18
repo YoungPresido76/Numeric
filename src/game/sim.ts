@@ -1,6 +1,8 @@
-import { advance, closeLab, derive } from './engine';
+import { advance, buildingCost, closeLab, derive } from './engine';
 import { stepLab } from './lab';
-import type { GameState } from './types';
+import type { GameState, Tier } from './types';
+
+const TIERS: readonly Tier[] = [0, 1, 2, 3];
 
 /**
  * One tick of live play: production first, then the lab (experiments,
@@ -10,8 +12,9 @@ import type { GameState } from './types';
 export function step(state: GameState, dt: number): GameState {
   if (!(dt > 0)) return state;
   const produced = advance(state, dt);
-  const ps = derive(produced).psPerSecond;
-  const result = stepLab(produced, dt, ps);
+  const derived = derive(produced);
+  const costs = TIERS.map((tier) => buildingCost(tier, produced.bought[tier], 1, derived.costDiscount));
+  const result = stepLab(produced, dt, derived.psPerSecond, costs);
   const stepped: GameState = {
     ...result.state,
     stats: { ...result.state.stats, playSeconds: result.state.stats.playSeconds + dt },
