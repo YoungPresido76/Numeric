@@ -47,6 +47,9 @@ export function OfflineModal({ report, onClose }: OfflineModalProps): ReactEleme
             ? `, counting only the first ${formatDuration(OFFLINE_CAP_SECONDS)} of your absence.`
             : '.'}
         </p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          Experiments were paused while you were away, so the lab is exactly as you left it.
+        </p>
         <button
           ref={button}
           type="button"

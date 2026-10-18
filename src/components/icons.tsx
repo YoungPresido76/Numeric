@@ -1,58 +1,54 @@
-import type { ReactElement } from 'react';
+import { CircleDot, GitFork, Network, ToggleRight, type LucideIcon } from 'lucide-react';
+import type { Tier } from '../game/types';
 
-interface IconProps {
-  className?: string;
-}
+export {
+  Eye,
+  FlaskConical,
+  Layers,
+  NotebookPen,
+  Orbit,
+  Settings,
+  ShieldCheck,
+  TrendingUp,
+  TriangleAlert,
+  Zap,
+} from 'lucide-react';
 
-const common = {
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 1.7,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-  'aria-hidden': true,
+/** One icon per project, chosen for what the project does: a two-state orb, a switch, a mesh, forking paths. */
+export const TIER_ICONS: Readonly<Record<Tier, LucideIcon>> = {
+  0: CircleDot,
+  1: ToggleRight,
+  2: Network,
+  3: GitFork,
 };
 
-export function BuildIcon({ className }: IconProps): ReactElement {
-  return (
-    <svg {...common} className={className}>
-      <path d="M12 3 3.5 7.5 12 12l8.5-4.5L12 3Z" />
-      <path d="m3.5 12 8.5 4.5 8.5-4.5" />
-      <path d="m3.5 16.5 8.5 4.5 8.5-4.5" />
-    </svg>
-  );
-}
+/** Chart fills, in fixed tier order. Checked against the dark surface for colour-blind separation. */
+export const TIER_CHART_COLORS: Readonly<Record<Tier, string>> = {
+  0: '#1aa3bd',
+  1: '#ec4899',
+  2: '#8b5cf6',
+  3: '#0da371',
+};
 
-export function UpgradeIcon({ className }: IconProps): ReactElement {
-  return (
-    <svg {...common} className={className}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 16.5V8" />
-      <path d="m8.5 11.5 3.5-3.5 3.5 3.5" />
-    </svg>
-  );
-}
+/** RGB triplet per tier for soft glows. */
+export const TIER_GLOW: Readonly<Record<Tier, string>> = {
+  0: '103 232 249',
+  1: '249 168 212',
+  2: '196 181 253',
+  3: '110 231 183',
+};
 
-export function CollapseIcon({ className }: IconProps): ReactElement {
-  return (
-    <svg {...common} className={className}>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-    </svg>
-  );
-}
+/** Text and tile classes per tier. One accent hue per tier. */
+export const TIER_TILE: Readonly<Record<Tier, string>> = {
+  0: 'bg-cyan-400/15 text-cyan-200 ring-cyan-300/30',
+  1: 'bg-pink-400/15 text-pink-200 ring-pink-300/30',
+  2: 'bg-violet-400/15 text-violet-200 ring-violet-300/30',
+  3: 'bg-emerald-400/15 text-emerald-200 ring-emerald-300/30',
+};
 
-export function SystemIcon({ className }: IconProps): ReactElement {
-  return (
-    <svg {...common} className={className}>
-      <path d="M4 7h10" />
-      <path d="M18 7h2" />
-      <circle cx="16" cy="7" r="2" />
-      <path d="M4 17h2" />
-      <path d="M10 17h10" />
-      <circle cx="8" cy="17" r="2" />
-    </svg>
-  );
-}
+export const TIER_BAR: Readonly<Record<Tier, string>> = {
+  0: 'bg-cyan-300',
+  1: 'bg-pink-300',
+  2: 'bg-violet-300',
+  3: 'bg-emerald-300',
+};

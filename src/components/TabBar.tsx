@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
-import { BuildIcon, CollapseIcon, SystemIcon, UpgradeIcon } from './icons';
+import { FlaskConical, Layers, Orbit, Settings, TrendingUp } from './icons';
 
-export type TabId = 'build' | 'upgrades' | 'collapse' | 'system';
+export type TabId = 'build' | 'upgrades' | 'lab' | 'collapse' | 'system';
 
 interface TabBarProps {
   active: TabId;
@@ -15,14 +15,15 @@ interface TabBarProps {
 interface TabDef {
   id: TabId;
   label: string;
-  Icon: (props: { className?: string }) => ReactElement;
+  Icon: typeof Layers;
 }
 
 const TABS: readonly TabDef[] = [
-  { id: 'build', label: 'Build', Icon: BuildIcon },
-  { id: 'upgrades', label: 'Upgrades', Icon: UpgradeIcon },
-  { id: 'collapse', label: 'Collapse', Icon: CollapseIcon },
-  { id: 'system', label: 'System', Icon: SystemIcon },
+  { id: 'build', label: 'Projects', Icon: Layers },
+  { id: 'upgrades', label: 'Upgrades', Icon: TrendingUp },
+  { id: 'lab', label: 'Lab', Icon: FlaskConical },
+  { id: 'collapse', label: 'Collapse', Icon: Orbit },
+  { id: 'system', label: 'System', Icon: Settings },
 ];
 
 export function TabBar({ active, onSelect, hintTab, badges }: TabBarProps): ReactElement {
@@ -30,7 +31,8 @@ export function TabBar({ active, onSelect, hintTab, badges }: TabBarProps): Reac
     <nav
       role="tablist"
       aria-label="Game sections"
-      className="grid shrink-0 grid-cols-4 border-t border-white/10 bg-void/90 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+      className="grid shrink-0 grid-cols-5 border-t bg-void/90 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-colors duration-700"
+      style={{ borderTopColor: 'color-mix(in srgb, var(--zone-a) 28%, transparent)' }}
     >
       {TABS.map(({ id, label, Icon }) => {
         const selected = id === active;
@@ -44,15 +46,15 @@ export function TabBar({ active, onSelect, hintTab, badges }: TabBarProps): Reac
             aria-selected={selected}
             aria-controls="panel"
             onClick={() => onSelect(id)}
-            className={`relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cyan-300 ${
+            className={`relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 text-[10.5px] font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cyan-300 ${
               selected ? 'text-cyan-200' : 'text-slate-400 active:text-slate-200'
             }`}
           >
             {selected ? (
-              <span aria-hidden="true" className="absolute inset-x-5 top-0 h-0.5 rounded-full bg-cyan-300" />
+              <span aria-hidden="true" className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-cyan-300" />
             ) : null}
             <span className="relative">
-              <Icon className={`size-6 ${hinted ? 'animate-pulse text-cyan-300' : ''}`} />
+              <Icon aria-hidden="true" strokeWidth={1.7} className={`size-6 ${hinted ? 'animate-pulse text-cyan-300' : ''}`} />
               {badges[id] && !selected ? (
                 <span
                   aria-hidden="true"

@@ -7,8 +7,13 @@ import {
 } from 'react';
 import {
   BASE_OFFLINE_EFFICIENCY,
+  BASE_SUCCESS_CHANCE,
   ECHO_BONUS_EACH,
+  NEUTRALIZE_WINDOW,
+  OBSERVE_BONUS,
+  OBSERVE_WINDOW,
   OFFLINE_CAP_SECONDS,
+  RISK_MULT_MAX,
   SURGE_BASE_COOLDOWN,
   SURGE_BASE_DURATION,
   SURGE_MULT,
@@ -18,7 +23,7 @@ import type { Snapshot } from '../game/store';
 import { useConfirm } from '../hooks/useConfirm';
 import type { GameActions } from '../hooks/useGame';
 
-const APP_VERSION = '0.1.0';
+const APP_VERSION = '0.2.0';
 
 interface SystemPanelProps {
   snapshot: Snapshot;
@@ -137,7 +142,10 @@ export function SystemPanel({ snapshot, actions }: SystemPanelProps): ReactEleme
     { label: 'Time played', value: formatDuration(state.stats.playSeconds) },
     { label: 'Total ψ', value: formatNumber(state.stats.totalAmplitude) },
     { label: 'Taps', value: formatNumber(state.stats.taps) },
-    { label: 'Collapses', value: formatNumber(state.stats.collapses) },
+    { label: 'Labs closed', value: formatNumber(state.stats.collapses) },
+    { label: 'Experiments', value: formatNumber(state.stats.experiments) },
+    { label: 'Observed', value: formatNumber(state.stats.observed) },
+    { label: 'Black holes', value: formatNumber(state.stats.blackHoles) },
   ];
 
   return (
@@ -234,23 +242,32 @@ export function SystemPanel({ snapshot, actions }: SystemPanelProps): ReactEleme
 
       <Section title="How to play">
         <ul className="list-disc space-y-1.5 pl-4 text-xs leading-snug text-slate-400 marker:text-slate-600">
-          <li>Tap the orb to gain ψ instantly. Taps scale with your production.</li>
+          <li>Amplitude (ψ) is your research budget. Tap the orb to observe the lab and gain it instantly.</li>
           <li>
-            Qubits add ψ every second. Gates, Lattices and Branches each create the tier below them, so growth
-            compounds.
-          </li>
-          <li>Owning 10, 25 and 50 of a building doubles its output. Upgrades are one-time boosts.</li>
-          <li>
-            Surge multiplies output by {SURGE_MULT} for {SURGE_BASE_DURATION}s, then recharges for{' '}
-            {SURGE_BASE_COOLDOWN}s.
+            Fund projects. Qubits bring in ψ every second; Gates, Lattices and Branches each create the project below
+            them, so growth compounds. Owning 10, 25 and 50 (and 100 for Qubits and Gates) doubles output.
           </li>
           <li>
-            Collapse resets the reality in exchange for Echoes: +{Math.round(ECHO_BONUS_EACH * 100)}% production
-            each, forever.
+            Gates and above run experiments. Observe one in its first {OBSERVE_WINDOW} seconds for +
+            {Math.round(OBSERVE_BONUS * 100)}% success. Unobserved, it resolves on its own at{' '}
+            {Math.round(BASE_SUCCESS_CHANCE * 100)}%.
           </li>
           <li>
-            Away from the game, your realities keep working for up to {formatDuration(OFFLINE_CAP_SECONDS)} at{' '}
-            {Math.round(BASE_OFFLINE_EFFICIENCY * 100)}% efficiency.
+            A failure costs funds and stability. Neutralize it within {NEUTRALIZE_WINDOW} seconds, or it keeps draining.
+            Stability is shown only by colour and warnings.
+          </li>
+          <li>
+            Surge multiplies output by {SURGE_MULT} for {SURGE_BASE_DURATION}s, recharges for {SURGE_BASE_COOLDOWN}s,
+            and lets you observe any experiment instantly.
+          </li>
+          <li>
+            Collapse publishes the lab for Echoes: +{Math.round(ECHO_BONUS_EACH * 100)}% production each, forever. A lab
+            that survived a close call pays up to ×{RISK_MULT_MAX}. Let stability run out and it becomes a black hole
+            that pays half.
+          </li>
+          <li>
+            Away from the game, labs keep working for up to {formatDuration(OFFLINE_CAP_SECONDS)} at{' '}
+            {Math.round(BASE_OFFLINE_EFFICIENCY * 100)}% efficiency. Experiments pause.
           </li>
         </ul>
       </Section>

@@ -72,7 +72,7 @@ export function EquationTicker({ derived }: EquationTickerProps): ReactElement {
         symbol="S"
         label="Surge multiplier"
         text={formatNumber(derived.surgeFactor)}
-        tone={surging ? 'text-amber-300' : 'text-slate-500'}
+        tone={surging ? 'text-sky-200' : 'text-slate-500'}
         flashOnChange
       />
       <Times />

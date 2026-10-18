@@ -24,7 +24,11 @@ interface Floater {
 const MAX_FLOATERS = 6;
 const FLOATER_MS = 900;
 
-/** The tap target: an atom-like orb with orbital rings and a breathing core. */
+/**
+ * The observation target: an atom-like orb with orbital rings and a breathing
+ * core. Its colours come from CSS variables, so stability zones and Surge
+ * recolour it without any props.
+ */
 export function Orb({ tapGain, surging, onTap }: OrbProps): ReactElement {
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [hits, setHits] = useState(0);
@@ -65,16 +69,13 @@ export function Orb({ tapGain, surging, onTap }: OrbProps): ReactElement {
     }
   };
 
-  const ring = surging ? 'text-amber-300' : 'text-cyan-300';
-  const ringAlt = surging ? 'text-orange-300' : 'text-violet-300';
-
   return (
     <button
       type="button"
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
-      aria-label={`Observe the orb to gain ${formatNumber(tapGain)} amplitude`}
-      className={`relative mx-auto grid size-[clamp(104px,19dvh,168px)] touch-manipulation place-items-center rounded-full select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300 ${
+      aria-label={`Observe the lab to gain ${formatNumber(tapGain)} amplitude`}
+      className={`relative mx-auto grid size-[clamp(88px,15dvh,160px)] touch-manipulation place-items-center rounded-full select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300 ${
         surging ? 'orb-surge' : ''
       }`}
     >
@@ -82,31 +83,31 @@ export function Orb({ tapGain, surging, onTap }: OrbProps): ReactElement {
         <defs>
           <radialGradient id="orb-core-grad" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
-            <stop offset="30%" stopColor={surging ? '#ffe08a' : '#7df3ff'} stopOpacity="0.92" />
-            <stop offset="70%" stopColor={surging ? '#ff9f43' : '#7c5cff'} stopOpacity="0.5" />
-            <stop offset="100%" stopColor={surging ? '#ff9f43' : '#7c5cff'} stopOpacity="0" />
+            <stop offset="30%" style={{ stopColor: 'var(--orb-a)' }} stopOpacity="0.92" />
+            <stop offset="70%" style={{ stopColor: 'var(--orb-b)' }} stopOpacity="0.5" />
+            <stop offset="100%" style={{ stopColor: 'var(--orb-b)' }} stopOpacity="0" />
           </radialGradient>
           <radialGradient id="orb-halo-grad" cx="50%" cy="50%" r="50%">
-            <stop offset="55%" stopColor={surging ? '#ffb347' : '#6366f1'} stopOpacity="0" />
-            <stop offset="100%" stopColor={surging ? '#ffb347' : '#6366f1'} stopOpacity="0.28" />
+            <stop offset="55%" style={{ stopColor: 'var(--orb-b)' }} stopOpacity="0" />
+            <stop offset="100%" style={{ stopColor: 'var(--orb-b)' }} stopOpacity="0.3" />
           </radialGradient>
         </defs>
 
         <circle cx="100" cy="100" r="98" fill="url(#orb-halo-grad)" />
 
-        <g className={`orb-ring orb-ring-a ${ring}`}>
+        <g className="orb-ring orb-ring-a" style={{ color: 'var(--orb-a)' }}>
           <g transform="rotate(20 100 100)">
             <ellipse cx="100" cy="100" rx="90" ry="32" fill="none" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.2" strokeDasharray="2 6" />
             <circle cx="190" cy="100" r="4.5" fill="currentColor" />
           </g>
         </g>
-        <g className={`orb-ring orb-ring-b ${ringAlt}`}>
+        <g className="orb-ring orb-ring-b" style={{ color: 'var(--orb-b)' }}>
           <g transform="rotate(-50 100 100)">
-            <ellipse cx="100" cy="100" rx="84" ry="26" fill="none" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.2" />
+            <ellipse cx="100" cy="100" rx="84" ry="26" fill="none" stroke="currentColor" strokeOpacity="0.6" strokeWidth="1.2" />
             <circle cx="16" cy="100" r="3.5" fill="currentColor" />
           </g>
         </g>
-        <g className={`orb-ring orb-ring-c ${ring}`}>
+        <g className="orb-ring orb-ring-c" style={{ color: 'var(--orb-a)' }}>
           <g transform="rotate(80 100 100)">
             <ellipse cx="100" cy="100" rx="70" ry="22" fill="none" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="1 4" />
             <circle cx="170" cy="100" r="3" fill="currentColor" />

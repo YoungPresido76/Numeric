@@ -35,11 +35,11 @@ export function SurgeButton({ surge, duration, cooldown, onActivate }: SurgeButt
       : `×${SURGE_MULT} for ${formatDuration(duration)}`;
 
   const shell = active
-    ? 'border-amber-300/60 text-amber-100'
+    ? 'border-sky-200/70 text-sky-50'
     : ready
       ? 'border-cyan-300/50 text-cyan-50 active:scale-[0.99]'
       : 'border-white/10 text-slate-400';
-  const fill = active ? 'bg-amber-400/35' : ready ? 'bg-cyan-300/25' : 'bg-violet-400/20';
+  const fill = active ? 'bg-sky-300/35' : ready ? 'bg-cyan-300/25' : 'bg-violet-400/20';
 
   return (
     <button

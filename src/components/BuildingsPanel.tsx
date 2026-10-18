@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { CSSProperties, ReactElement } from 'react';
 import { BUILDINGS, TIERS } from '../game/data';
 import {
   buildingCost,
@@ -9,6 +9,7 @@ import {
 } from '../game/engine';
 import { clamp, formatNumber } from '../game/math';
 import type { BuyAmount, Derived, GameState, Tier } from '../game/types';
+import { TIER_BAR, TIER_GLOW, TIER_ICONS, TIER_TILE } from './icons';
 
 interface BuildingsPanelProps {
   state: GameState;
@@ -17,18 +18,6 @@ interface BuildingsPanelProps {
   onAmountChange: (amount: BuyAmount) => void;
   onBuy: (tier: Tier, amount: BuyAmount) => void;
 }
-
-interface TierStyle {
-  tile: string;
-  bar: string;
-}
-
-const TIER_STYLES: Readonly<Record<Tier, TierStyle>> = {
-  0: { tile: 'bg-cyan-400/15 text-cyan-200 ring-cyan-300/30', bar: 'bg-cyan-300' },
-  1: { tile: 'bg-violet-400/15 text-violet-200 ring-violet-300/30', bar: 'bg-violet-300' },
-  2: { tile: 'bg-fuchsia-400/15 text-fuchsia-200 ring-fuchsia-300/30', bar: 'bg-fuchsia-300' },
-  3: { tile: 'bg-amber-400/15 text-amber-200 ring-amber-300/30', bar: 'bg-amber-300' },
-};
 
 const AMOUNTS: readonly { value: BuyAmount; label: string }[] = [
   { value: 1, label: '×1' },
@@ -46,17 +35,18 @@ interface BuildingCardProps {
 
 function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps): ReactElement {
   const def = BUILDINGS[tier];
-  const style = TIER_STYLES[tier];
+  const Icon = TIER_ICONS[tier];
   const owned = state.bought[tier];
   const generated = state.generated[tier];
+  const active = owned > 0;
 
   const fit = maxAffordable(tier, owned, state.amplitude, derived.costDiscount);
   const count = amount === 'max' ? Math.max(1, fit) : amount;
   const cost = buildingCost(tier, owned, count, derived.costDiscount);
   const affordable = amount === 'max' ? fit >= 1 : cost <= state.amplitude;
 
-  const milestone = nextMilestone(owned);
-  const mult = milestoneMult(owned);
+  const milestone = nextMilestone(tier, owned);
+  const mult = milestoneMult(tier, owned);
   const progress = milestone === null ? 1 : clamp(owned / milestone, 0, 1);
 
   const perUnit =
@@ -68,14 +58,20 @@ function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps
     <li className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <div
         aria-hidden="true"
-        className={`grid size-11 place-items-center rounded-xl font-display text-2xl ring-1 ${style.tile}`}
+        style={{ '--tile-glow': TIER_GLOW[tier], animationDelay: `${tier * 0.6}s` } as CSSProperties}
+        className={`grid size-11 place-items-center rounded-xl ring-1 ${TIER_TILE[tier]} ${active ? 'tile-active' : ''}`}
       >
-        {def.symbol}
+        <Icon className="size-6" strokeWidth={1.6} />
       </div>
 
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
-          <h3 className="truncate text-sm font-semibold text-slate-100">{def.name}</h3>
+          <h3 className="truncate text-sm font-semibold text-slate-100">
+            <span aria-hidden="true" className="mr-1.5 font-display text-slate-500">
+              {def.symbol}
+            </span>
+            {def.name}
+          </h3>
           {mult > 1 ? (
             <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 font-numeric text-[10px] text-cyan-200">
               ×{formatNumber(mult)}
@@ -91,10 +87,10 @@ function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps
         <p className="mt-0.5 truncate font-numeric text-[11px] text-slate-500">{perUnit}</p>
         <div className="mt-1.5 flex items-center gap-2">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
-            <div className={`h-full rounded-full ${style.bar}`} style={{ width: `${progress * 100}%` }} />
+            <div className={`h-full rounded-full ${TIER_BAR[tier]}`} style={{ width: `${progress * 100}%` }} />
           </div>
           <span className="font-numeric text-[10px] whitespace-nowrap text-slate-500">
-            {milestone === null ? 'max ×2 chain' : `×2 at ${milestone}`}
+            {milestone === null ? 'all ×2 steps done' : `×2 at ${milestone}`}
           </span>
         </div>
       </div>
@@ -103,7 +99,7 @@ function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps
         type="button"
         onClick={() => onBuy(tier, amount)}
         disabled={!affordable}
-        aria-label={`Buy ${count} ${def.name} for ${formatNumber(cost)} amplitude`}
+        aria-label={`Fund ${count} ${def.name} for ${formatNumber(cost)} amplitude`}
         className={`flex min-h-12 min-w-24 touch-manipulation flex-col items-center justify-center rounded-xl px-3 py-1.5 text-center transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
           affordable
             ? 'bg-cyan-300 text-slate-950 active:scale-95 active:bg-cyan-200'
@@ -131,7 +127,7 @@ export function BuildingsPanel({
   return (
     <div className="fade-in space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg italic text-slate-200">Realities</h2>
+        <h2 className="font-display text-lg italic text-slate-200">Projects</h2>
         <div role="radiogroup" aria-label="Buy amount" className="flex rounded-xl border border-white/10 bg-white/[0.04] p-0.5">
           {AMOUNTS.map((option) => {
             const selected = option.value === amount;
@@ -159,7 +155,7 @@ export function BuildingsPanel({
         ))}
         {lockedTier !== undefined && lockedBelow ? (
           <li className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-center text-xs text-slate-500">
-            An undiscovered reality stirs. Buy a {lockedBelow.name} to find it.
+            A new line of research is waiting. Fund a {lockedBelow.name} to find it.
           </li>
         ) : null}
       </ul>
