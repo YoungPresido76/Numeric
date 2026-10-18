@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react';
 import { BuildingsPanel } from './components/BuildingsPanel';
 import { CollapsePanel } from './components/CollapsePanel';
 import { dockItemCount, ExperimentDock } from './components/ExperimentDock';
+import { IntroSequence } from './components/IntroSequence';
 import { LabPanel } from './components/LabPanel';
 import { NoticeBar } from './components/NoticeBar';
 import { NotebookStrip } from './components/NotebookStrip';
@@ -22,7 +23,7 @@ import { TUTORIAL_STEPS } from './game/tutorial';
 import type { BuyAmount } from './game/types';
 import { useGame } from './hooks/useGame';
 
-const DOCK_CARD_PX = 62;
+const DOCK_CARD_PX = 84;
 
 export default function App(): ReactElement {
   const { snapshot, actions } = useGame();
@@ -102,6 +103,7 @@ export default function App(): ReactElement {
         <TabBar active={tab} onSelect={setTab} hintTab={hintTab} badges={badges} />
       </div>
 
+      {state.introSeen ? null : <IntroSequence onDone={actions.finishIntro} />}
       <OfflineModal report={snapshot.offlineReport} onClose={actions.dismissOffline} />
       <SummaryModal summary={state.summary} onClose={actions.dismissSummary} />
     </div>

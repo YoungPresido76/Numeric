@@ -137,6 +137,43 @@
   .dock-in {
     animation: dock-in 260ms ease-out both;
   }
+
+  /* Opening sequence: one circle, rings that fade as they grow. */
+  .intro-point {
+    animation: intro-breathe 3.2s ease-in-out infinite;
+  }
+  .intro-halo {
+    animation: intro-breathe 3.2s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .intro-ring {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: intro-ring 3.4s ease-out both;
+  }
+
+  /* Waveform ghosting: numbers pick up a faint double image as the lab strains, and resolve clean again. */
+  .ghost-text {
+    transition: text-shadow 900ms ease-out;
+  }
+  .zone-root[data-zone='strained'] .ghost-text {
+    text-shadow: 0.04em 0 0 color-mix(in srgb, var(--zone-a) 34%, transparent);
+    animation: ghost-drift 5s ease-in-out infinite;
+  }
+  .zone-root[data-zone='critical'] .ghost-text {
+    text-shadow:
+      0.06em 0 0 color-mix(in srgb, var(--zone-a) 45%, transparent),
+      -0.05em 0 1px color-mix(in srgb, var(--zone-b) 40%, transparent);
+    animation: ghost-drift 2.6s ease-in-out infinite;
+  }
+  .zone-root[data-zone='imminent'] .ghost-text {
+    text-shadow:
+      0.09em 0 0 color-mix(in srgb, var(--zone-a) 55%, transparent),
+      -0.08em 0 2px color-mix(in srgb, var(--zone-b) 50%, transparent);
+    animation: ghost-drift 1.3s ease-in-out infinite;
+  }
   .superposed {
     animation: superposed 1.4s ease-in-out infinite;
   }
@@ -428,6 +465,37 @@
   animation: fade-in 220ms ease-out both;
 }
 
+@keyframes intro-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes intro-ring {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(17);
+  }
+}
+
+@keyframes ghost-drift {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(0.5px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orb-ring-a,
   .orb-ring-b,
@@ -442,6 +510,10 @@
   .caret,
   .dock-in,
   .superposed,
+  .intro-point,
+  .intro-halo,
+  .intro-ring,
+  .ghost-text,
   .zone-overlay,
   .stars,
   .singularity {
