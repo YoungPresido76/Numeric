@@ -43,9 +43,9 @@ function BuildingCard({ tier, state, derived, amount, onBuy, onToggleAuto }: Bui
   const generated = state.generated[tier];
   const active = owned > 0;
 
-  const fit = maxAffordable(tier, owned, state.amplitude, derived.costDiscount);
+  const fit = maxAffordable(tier, owned, state.amplitude, derived.costDiscount, derived.growth[tier]);
   const count = amount === 'max' ? Math.max(1, fit) : amount;
-  const cost = buildingCost(tier, owned, count, derived.costDiscount);
+  const cost = buildingCost(tier, owned, count, derived.costDiscount, derived.growth[tier]);
   const affordable = amount === 'max' ? fit >= 1 : cost <= state.amplitude;
 
   const milestone = nextMilestone(tier, owned);

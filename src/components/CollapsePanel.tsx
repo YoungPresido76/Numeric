@@ -95,6 +95,7 @@ export function CollapsePanel({ state, onCollapse, onAutoBuy, onAutoToggle }: Co
               {formatNumber(payout.base)} base × {payout.mult.toFixed(2)} risk
             </p>
             <p>
+              {payout.memory > 0 ? `Includes +${formatNumber(payout.memory)} ε from Echo Memory. ` : ''}
               {risky
                 ? `This lab came close to failing (${zoneWord(closest).toLowerCase()}) and survived, so it pays more.`
                 : `A calm lab pays the base rate. A close call that survives pays up to ×${RISK_MULT_MAX}.`}
@@ -140,8 +141,8 @@ export function CollapsePanel({ state, onCollapse, onAutoBuy, onAutoToggle }: Co
           Surge, experiments and stability.
         </p>
         <p className="mt-1">
-          <span className="font-semibold text-slate-200">Keeps:</span> Echoes, autobuyers, statistics, settings, and
-          any perks carried forward.
+          <span className="font-semibold text-slate-200">Keeps:</span> Echoes, autobuyers, Threads and Thread upgrades,
+          statistics, settings, and any perks carried forward.
         </p>
         <p className="mt-1">
           <span className="font-semibold text-slate-200">If stability runs out,</span> the lab falls into a black hole

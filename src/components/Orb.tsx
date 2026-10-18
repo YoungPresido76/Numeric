@@ -11,6 +11,8 @@ import { formatNumber } from '../game/math';
 interface OrbProps {
   tapGain: number;
   surging: boolean;
+  /** Superposition Tapping: a tap adds a waveform instead of paying out. */
+  waveform: boolean;
   onTap: () => void;
 }
 
@@ -29,7 +31,7 @@ const FLOATER_MS = 900;
  * core. Its colours come from CSS variables, so stability zones and Surge
  * recolour it without any props.
  */
-export function Orb({ tapGain, surging, onTap }: OrbProps): ReactElement {
+export function Orb({ tapGain, surging, waveform, onTap }: OrbProps): ReactElement {
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [hits, setHits] = useState(0);
   const nextId = useRef(0);
@@ -48,7 +50,7 @@ export function Orb({ tapGain, surging, onTap }: OrbProps): ReactElement {
     setHits((n) => n + 1);
     const id = nextId.current;
     nextId.current += 1;
-    setFloaters((list) => [...list.slice(-(MAX_FLOATERS - 1)), { id, x, y, label: `+${formatNumber(tapGain)}` }]);
+    setFloaters((list) => [...list.slice(-(MAX_FLOATERS - 1)), { id, x, y, label: waveform ? '+1 ∿' : `+${formatNumber(tapGain)}` }]);
     const timer = window.setTimeout(() => {
       timers.current.delete(timer);
       setFloaters((list) => list.filter((f) => f.id !== id));
@@ -74,7 +76,11 @@ export function Orb({ tapGain, surging, onTap }: OrbProps): ReactElement {
       type="button"
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
-      aria-label={`Observe the lab to gain ${formatNumber(tapGain)} amplitude`}
+      aria-label={
+        waveform
+          ? 'Observe the lab to add an unresolved waveform'
+          : `Observe the lab to gain ${formatNumber(tapGain)} amplitude`
+      }
       className={`relative mx-auto grid size-[clamp(88px,15dvh,160px)] touch-manipulation place-items-center rounded-full select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300 ${
         surging ? 'orb-surge' : ''
       }`}

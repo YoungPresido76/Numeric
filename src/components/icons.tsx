@@ -2,17 +2,22 @@ import { CircleDot, GitFork, Network, ToggleRight, type LucideIcon } from 'lucid
 import type { Tier } from '../game/types';
 
 export {
+  AudioWaveform,
   Bot,
   Coins,
   Eye,
   FlaskConical,
+  History,
+  Hourglass,
   Layers,
   NotebookPen,
   Orbit,
   Settings,
   ShieldCheck,
+  Spline,
   TrendingUp,
   TriangleAlert,
+  Waypoints,
   Zap,
 } from 'lucide-react';
 

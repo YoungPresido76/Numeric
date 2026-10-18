@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
-import { FlaskConical, Layers, Orbit, Settings, TrendingUp } from './icons';
+import { FlaskConical, Layers, Orbit, Settings, TrendingUp, Waypoints } from './icons';
 
-export type TabId = 'build' | 'upgrades' | 'lab' | 'collapse' | 'system';
+export type TabId = 'build' | 'upgrades' | 'lab' | 'collapse' | 'fabric' | 'system';
 
 interface TabBarProps {
   active: TabId;
@@ -10,6 +10,8 @@ interface TabBarProps {
   hintTab: TabId | null;
   /** Tabs with something new to do. */
   badges: Readonly<Partial<Record<TabId, boolean>>>;
+  /** The Fabric tab appears once Fabric is unlocked. */
+  showFabric: boolean;
 }
 
 interface TabDef {
@@ -23,18 +25,20 @@ const TABS: readonly TabDef[] = [
   { id: 'upgrades', label: 'Upgrades', Icon: TrendingUp },
   { id: 'lab', label: 'Lab', Icon: FlaskConical },
   { id: 'collapse', label: 'Collapse', Icon: Orbit },
+  { id: 'fabric', label: 'Fabric', Icon: Waypoints },
   { id: 'system', label: 'System', Icon: Settings },
 ];
 
-export function TabBar({ active, onSelect, hintTab, badges }: TabBarProps): ReactElement {
+export function TabBar({ active, onSelect, hintTab, badges, showFabric }: TabBarProps): ReactElement {
+  const tabs = showFabric ? TABS : TABS.filter((tab) => tab.id !== 'fabric');
   return (
     <nav
       role="tablist"
       aria-label="Game sections"
-      className="grid shrink-0 grid-cols-5 border-t bg-void/90 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-colors duration-700"
+      className={`grid shrink-0 ${showFabric ? 'grid-cols-6' : 'grid-cols-5'} border-t bg-void/90 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-colors duration-700`}
       style={{ borderTopColor: 'color-mix(in srgb, var(--zone-a) 28%, transparent)' }}
     >
-      {TABS.map(({ id, label, Icon }) => {
+      {tabs.map(({ id, label, Icon }) => {
         const selected = id === active;
         const hinted = hintTab === id && !selected;
         return (

@@ -1,20 +1,22 @@
 import type { ReactElement } from 'react';
 import { ketFor } from '../game/glyph';
-import { formatNumber, formatWhole } from '../game/math';
+import { formatDuration, formatNumber, formatWhole } from '../game/math';
 import type { Snapshot } from '../game/store';
 import { EquationTicker } from './EquationTicker';
 import { FlowTrail } from './FlowTrail';
 import { Orb } from './Orb';
 import { SurgeButton } from './SurgeButton';
+import { WaveformBar } from './WaveformBar';
 
 interface StageProps {
   snapshot: Snapshot;
   onTap: () => void;
   onSurge: () => void;
+  onResolve: () => void;
 }
 
 /** Top section: title, funds readout, the observation orb, the live equation and the Surge ability. */
-export function Stage({ snapshot, onTap, onSurge }: StageProps): ReactElement {
+export function Stage({ snapshot, onTap, onSurge, onResolve }: StageProps): ReactElement {
   const { state, derived } = snapshot;
   const surging = state.surge.activeLeft > 0;
   const ket = ketFor(state.amplitude);
@@ -57,9 +59,15 @@ export function Stage({ snapshot, onTap, onSurge }: StageProps): ReactElement {
           +{formatNumber(derived.psPerSecond)} ψ/s
           <span className="sr-only"> research budget</span>
         </p>
+        {derived.dilated ? (
+          <p className="mt-0.5 font-numeric text-[11px] text-teal-200">
+            Time dilated · {formatDuration(Math.ceil(state.fabric.dilation.activeLeft))}
+          </p>
+        ) : null}
       </div>
 
-      <Orb tapGain={derived.tapGain} surging={surging} onTap={onTap} />
+      <Orb tapGain={derived.tapGain} surging={surging} waveform={state.fabric.tapping} onTap={onTap} />
+      {state.fabric.tapping ? <WaveformBar state={state} onResolve={onResolve} /> : null}
       <div className="[@media(max-height:640px)]:hidden">
         <EquationTicker derived={derived} />
       </div>
