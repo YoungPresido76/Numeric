@@ -1,4 +1,6 @@
 import {
+  DILATION_BASE_DRAIN,
+  DILATION_DRAIN_MULT,
   FAIL_LOSS_MAX,
   FAIL_LOSS_MIN,
   FAIL_STABILITY_MAX,
@@ -148,7 +150,7 @@ function cloneLab(lab: LabState): LabState {
 }
 
 /** A mutable copy of the parts of the state this module changes. */
-function draft(state: GameState): GameState {
+export function draft(state: GameState): GameState {
   return {
     ...state,
     lab: cloneLab(state.lab),
@@ -159,7 +161,7 @@ function draft(state: GameState): GameState {
 }
 
 /** mulberry32. Returns a value in [0, 1) and advances the stored seed. */
-function random(s: GameState): number {
+export function random(s: GameState): number {
   const seed = (s.lab.rng + 0x6d2b79f5) >>> 0;
   s.lab.rng = seed;
   let t = seed;
@@ -172,7 +174,7 @@ function randomBetween(s: GameState, min: number, max: number): number {
   return min + random(s) * (max - min);
 }
 
-function addNote(s: GameState, text: Line): void {
+export function addNote(s: GameState, text: Line): void {
   const note: NoteLine = { id: s.lab.nextId, text: text.text, tone: text.tone };
   s.lab.nextId += 1;
   s.notes.push(note);
@@ -199,7 +201,7 @@ export function noteForPurchase(state: GameState, tier: Tier): GameState {
  * Changes stability, tracks the lowest point, and remembers the project that
  * pulled the lab back from Critical so it can be carried to the next lab.
  */
-function shiftStability(s: GameState, delta: number, project: ProjectTier | null): void {
+export function shiftStability(s: GameState, delta: number, project: ProjectTier | null): void {
   const lab = s.lab;
   const before = lab.stability;
   lab.stability = clamp(before + delta, 0, STABILITY_MAX);
@@ -530,8 +532,12 @@ export function stepLab(state: GameState, dt: number, ps: number, costs: readonl
     addNote(s, narrative.ignored(failure.tier));
   }
 
-  const draining = lab.failures.length + lab.festering;
-  if (draining > 0) shiftStability(s, -draining * DRAIN_PER_FAILURE * dt, null);
+  // A Dilated Time window doubles the drain and always counts as one open failure.
+  const dilated = s.fabric.dilation.activeLeft > 0;
+  const draining = lab.failures.length + lab.festering + (dilated ? DILATION_BASE_DRAIN : 0);
+  if (draining > 0) {
+    shiftStability(s, -draining * DRAIN_PER_FAILURE * (dilated ? DILATION_DRAIN_MULT : 1) * dt, null);
+  }
 
   while (lab.grants < GRANT_MILESTONES.length && s.runAmplitude >= (GRANT_MILESTONES[lab.grants] ?? Infinity)) {
     addNote(s, narrative.grant(lab.grants, lab.nextId));

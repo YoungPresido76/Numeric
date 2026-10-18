@@ -1,6 +1,6 @@
 import { BUILDINGS, PROJECT_NAMES } from './data';
 import { formatNumber } from './math';
-import type { NoteTone, ProjectTier, Task, Tier, TreeId } from './types';
+import type { NoteTone, ProjectTier, Task, Tier, TreeId, Zone } from './types';
 
 /** One notebook line before it is given an id. The text already carries its [ LABEL: ] tag. */
 export interface Line {
@@ -282,6 +282,74 @@ export const narrative = {
   /** A research tree finished: Main at 3/3 and both Subs at 8/8. */
   researchComplete(tree: TreeId): Line {
     return line(`${TREE_SHORT[tree]} is complete. Nothing left to optimize. Almost suspicious. - Vey`, 'good', 'LAB-NOTE');
+  },
+
+  /** Fabric became available: the Echo ledger crossed its threshold. */
+  fabricOpened(): Line {
+    return line(
+      'Fifteen Echoes on the ledger. The old notebooks mention something under the floor: the Fabric. Threads, if we pull them. - Vey',
+      'good',
+      'LAB-NOTE',
+    );
+  },
+
+  /** A lab was woven: its research became Threads instead of Echoes. */
+  woven(lab: number, threads: number): Line {
+    return line(
+      `Lab ${lab} woven into the Fabric. ${threads} ${threads === 1 ? 'Thread' : 'Threads'} drawn, and no Echoes this time. - Vey`,
+      'info',
+      'LOG',
+    );
+  },
+
+  /** Two labs with opposite histories lined up on a Weave. */
+  symmetricPair(pairs: number): Line {
+    return line(
+      `One lab that never wobbled, one that nearly fell. Together they make a Symmetric Pair (${pairs}). The whole building hums a little louder. - Vey`,
+      'good',
+      'LAB-NOTE',
+    );
+  },
+
+  /** Cost Decoherence bought for a project. */
+  decoherence(tier: Tier): Line {
+    return line(`${AUTOMATED[tier].replace(' procurement', '')} costs stop climbing quite so fast. The ledger looks almost polite. - Vey`, 'good', 'LAB-NOTE');
+  },
+
+  /** A Temporal Wormhole paid out. */
+  wormhole(gain: string): Line {
+    return line(`Temporal Wormhole installed. The books were rewritten from an earlier hour: +${gain} ψ. Do not ask the auditors. - Vey`, 'good', 'LAB-NOTE');
+  },
+
+  /** Dilated Time opened. */
+  dilation(): Line {
+    return line('Dilated Time. The qubits run fast and the building runs hot. Do not stay in it longer than you must. - Vey', 'warn', 'MEMO');
+  },
+
+  /** Superposition Tapping bought. */
+  tapping(): Line {
+    return line('Superposition Tapping online. Taps are held, unresolved, until somebody observes them. Choose the moment. - Vey', 'good', 'LAB-NOTE');
+  },
+
+  /** Ancestral Legacy bought. */
+  ancestral(): Line {
+    return line('Ancestral Legacy. The old labs are still in the walls, and they would like a word. - Vey', 'good', 'LAB-NOTE');
+  },
+
+  /** A burst of waveforms resolved. */
+  waveResolved(gain: string, count: number): Line {
+    return line(`${count} waveforms collapsed at once: +${gain} ψ.`, 'good');
+  },
+
+  /** An observation at a poor moment collapsed into an Instability Setback. */
+  waveSetback(zone: Zone): Line {
+    return line(
+      zone === 'strained'
+        ? 'Observed at a bad moment. The waveforms collapsed into noise. Stability slips. - Vey'
+        : 'Observed while the lab was failing. The waveforms collapsed into static. Stability slips. - Vey',
+      'warn',
+      'MEMO',
+    );
   },
 
   /** An autobuyer was installed for a project. */

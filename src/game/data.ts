@@ -137,6 +137,70 @@ export const ZONES: readonly Zone[] = ['stable', 'strained', 'critical', 'immine
 
 export const NO_SPAWN: Triple = [-1, -1, -1];
 
+/* ------------------------------------------------------------------ */
+/* Fabric (4D)                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Fabric unlocks once this many Echoes have been earned in total. */
+export const FABRIC_UNLOCK_ECHOES = 15;
+/** Weave: Threads = floor(sqrt(runAmplitude / THREAD_DIVISOR) x risk multiplier). */
+export const THREAD_DIVISOR = 2.5e12;
+
+/** Cost Decoherence: fixed amount taken off a tier's cost growth per purchase (Qubit 1.22 to 1.18). */
+export const DECOHERENCE_STEP: Quad = [0.04, 0.06, 0.07, 0.08];
+export const DECOHERENCE_MAX = 3;
+/** Thread cost of a tier's first Cost Decoherence. Each later one costs twice the one before. */
+export const DECOHERENCE_BASE_COST: Quad = [1, 2, 3, 4];
+
+/**
+ * Temporal Wormhole: pays once, at install, a share of the Amplitude produced since the chosen
+ * point. The share is WORMHOLE_BASE x (time since the point / run length so far), capped.
+ */
+export const WORMHOLE_COST = 3;
+export const WORMHOLE_BASE = 0.5;
+export const WORMHOLE_CAP = 0.25;
+/** The lab must be this old before it has a history worth rewriting. */
+export const WORMHOLE_MIN_SECONDS = 120;
+/** Latest point that can be chosen, as a fraction of the run so far. */
+export const WORMHOLE_MAX_POINT = 0.9;
+
+/** Dilated Time: a paid window of faster Qubits and faster-draining stability. */
+export const DILATION_COST = 2;
+export const DILATION_SECONDS = 60;
+export const DILATION_BOOST = 0.4;
+export const DILATION_DRAIN_MULT = 2;
+/** The window itself counts as this many open failures while it lasts, so it always costs stability. */
+export const DILATION_BASE_DRAIN = 1;
+
+/** Superposition Tapping and Ancestral Legacy are bought once, with Threads. */
+export const TAPPING_COST = 6;
+export const ANCESTRAL_COST = 10;
+
+/** Unresolved Waveforms. A burst is waveforms x tap gain x a multiplier drawn from a curve. */
+export const WAVE_RATE_TAU = 5;
+/** Taps per second at which the curve is fully tilted toward big bursts. */
+export const WAVE_RATE_FULL = 4;
+export const WAVE_MIN = 0.5;
+export const WAVE_MAX = 4;
+/** The draw is u^exponent: a slow tapper gets WAVE_EXP_SLOW, a fast one WAVE_EXP_FAST. */
+export const WAVE_EXP_SLOW = 2;
+export const WAVE_EXP_FAST = 0.5;
+export const WAVE_STORE_CAP = 500;
+/** Chance an observation collapses into an Instability Setback, by stability zone. */
+export const WAVE_SETBACK_CHANCE: Readonly<Record<Zone, number>> = {
+  stable: 0,
+  strained: 0.25,
+  critical: 0.5,
+  imminent: 0.75,
+};
+export const WAVE_SETBACK_STABILITY = 5;
+
+/** Ancestral Legacy: Echo Memory adds this share of your best lab's Echoes to every Collapse. */
+export const ECHO_MEMORY_FRACTION = 0.1;
+/** Each Symmetric Pair adds this to production, up to SYMMETRIC_MAX pairs. */
+export const SYMMETRIC_AURA = 0.05;
+export const SYMMETRIC_MAX = 10;
+
 export const BUILDINGS: readonly BuildingDef[] = [
   {
     tier: 0,

@@ -3,10 +3,12 @@ import {
   BASE_TAP_FRACTION,
   BLACK_HOLE_PAYOUT,
   BUILDINGS,
+  DILATION_BOOST,
   ECHO_BONUS_EACH,
   ECHO_DISCOUNT_CAP,
   ECHO_DISCOUNT_EACH,
   ECHO_DIVISOR,
+  FABRIC_UNLOCK_ECHOES,
   LEGACY_CAP,
   LEGACY_PER_ECHO,
   MAX_NOTES,
@@ -19,6 +21,16 @@ import {
   UPGRADE_BY_ID,
 } from './data';
 import { createAutobuyers } from './autobuyers';
+import {
+  addWaveform,
+  closeFabric,
+  createFabric,
+  echoMemory,
+  growthOf,
+  pairAura,
+  threadsFor,
+  tickFabric,
+} from './fabric';
 import { createHistory, createLab, addNotes, riskMultiplier, zoneOf } from './lab';
 import { clampFinite, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
@@ -53,6 +65,7 @@ export function createInitialState(now: number): GameState {
     echoesEarned: 0,
     research: createResearch(),
     treesCleared: false,
+    fabric: createFabric(),
     autobuyers: createAutobuyers(),
     autoClock: 0,
     perks: [],
@@ -144,8 +157,9 @@ export function derive(state: GameState): Derived {
     state.bought[2] + state.generated[2],
     state.bought[3] + state.generated[3],
   ];
+  const dilated = state.fabric.dilation.activeLeft > 0;
   const rates: Quad = [
-    BUILDINGS[0].baseRate * milestoneMult(0, state.bought[0]) * tierMult[0],
+    BUILDINGS[0].baseRate * milestoneMult(0, state.bought[0]) * tierMult[0] * (dilated ? 1 + DILATION_BOOST : 1),
     BUILDINGS[1].baseRate * milestoneMult(1, state.bought[1]) * tierMult[1],
     BUILDINGS[2].baseRate * milestoneMult(2, state.bought[2]) * tierMult[2],
     BUILDINGS[3].baseRate * milestoneMult(3, state.bought[3]) * tierMult[3],
@@ -153,12 +167,16 @@ export function derive(state: GameState): Derived {
 
   const surgeFactor = state.surge.activeLeft > 0 ? SURGE_MULT : 1;
   const echoMult = echoMultFor(state.echoesEarned);
-  const outputMult = upgradeGlobal * surgeFactor * echoMult * research.output;
+  const aura = pairAura(state.fabric);
+  const outputMult = upgradeGlobal * surgeFactor * echoMult * research.output * aura;
   const psPerSecond = clampFinite(units[0] * rates[0] * outputMult);
 
   return {
     units,
     rates,
+    growth: growthOf(state.fabric),
+    dilated,
+    pairAura: aura,
     upgradeGlobal,
     surgeFactor,
     echoMult,
@@ -244,6 +262,7 @@ function integrate(state: GameState, t: number): GameState {
       activeLeft: Math.max(0, state.surge.activeLeft - t),
       cooldownLeft: Math.max(0, state.surge.cooldownLeft - t),
     },
+    fabric: tickFabric(state.fabric, t),
     lab: {
       ...state.lab,
       run: { ...state.lab.run, byTier: byTier.map(clampFinite) as Quad },
@@ -255,14 +274,22 @@ function integrate(state: GameState, t: number): GameState {
   };
 }
 
-/** Advances production by `dt` seconds, splitting where Surge expires. */
+/** Advances production by `dt` seconds, splitting wherever Surge or Dilated Time expires. */
 export function advance(state: GameState, dt: number): GameState {
   if (!(dt > 0)) return state;
-  const surgeLeft = state.surge.activeLeft;
-  if (surgeLeft > 0 && dt > surgeLeft) {
-    return integrate(integrate(state, surgeLeft), dt - surgeLeft);
+  let remaining = dt;
+  let current = state;
+  // At most two splits (one per timed effect) plus the final slice.
+  for (let guard = 0; guard < 4 && remaining > 0; guard += 1) {
+    let slice = remaining;
+    const edges = [current.surge.activeLeft, current.fabric.dilation.activeLeft];
+    for (const edge of edges) {
+      if (edge > 0 && edge < slice) slice = edge;
+    }
+    current = integrate(current, slice);
+    remaining -= slice;
   }
-  return integrate(state, dt);
+  return current;
 }
 
 /**
@@ -278,7 +305,11 @@ export function applyOffline(
   const credited = Math.min(Math.max(0, elapsedSeconds), OFFLINE_CAP_SECONDS);
   const efficiency = d.offlineEfficiency;
 
-  const base: GameState = { ...state, surge: { activeLeft: 0, cooldownLeft: 0 } };
+  const base: GameState = {
+    ...state,
+    surge: { activeLeft: 0, cooldownLeft: 0 },
+    fabric: { ...state.fabric, dilation: { activeLeft: 0 } },
+  };
   const simulated = integrate(base, credited);
 
   const gained = (simulated.amplitude - base.amplitude) * efficiency;
@@ -304,6 +335,7 @@ export function applyOffline(
       activeLeft: 0,
       cooldownLeft: Math.max(0, state.surge.cooldownLeft - elapsedSeconds),
     },
+    fabric: { ...state.fabric, dilation: { activeLeft: 0 }, tapRate: 0 },
     lab: { ...state.lab, run: { ...state.lab.run, byTier } },
     stats: {
       ...state.stats,
@@ -328,10 +360,15 @@ export function applyOffline(
 /* ------------------------------------------------------------------ */
 
 /** Total cost of buying `count` more of a building when `bought` are owned. */
-export function buildingCost(tier: Tier, bought: number, count: number, discount: number): number {
-  const def = BUILDINGS[tier];
-  const g = def.costGrowth;
-  const first = def.baseCost * Math.pow(g, bought);
+export function buildingCost(
+  tier: Tier,
+  bought: number,
+  count: number,
+  discount: number,
+  growth: number,
+): number {
+  const g = growth;
+  const first = BUILDINGS[tier].baseCost * Math.pow(g, bought);
   return first * ((Math.pow(g, count) - 1) / (g - 1)) * (1 - discount);
 }
 
@@ -341,23 +378,25 @@ export function maxAffordable(
   bought: number,
   amplitude: number,
   discount: number,
+  growth: number,
 ): number {
-  const g = BUILDINGS[tier].costGrowth;
+  const g = growth;
   const first = BUILDINGS[tier].baseCost * Math.pow(g, bought) * (1 - discount);
   if (!(amplitude >= first)) return 0;
   let n = Math.floor(Math.log((amplitude * (g - 1)) / first + 1) / Math.log(g));
   if (!Number.isFinite(n) || n < 0) n = 0;
-  while (n > 0 && buildingCost(tier, bought, n, discount) > amplitude) n -= 1;
-  while (n < 100_000 && buildingCost(tier, bought, n + 1, discount) <= amplitude) n += 1;
+  while (n > 0 && buildingCost(tier, bought, n, discount, g) > amplitude) n -= 1;
+  while (n < 100_000 && buildingCost(tier, bought, n + 1, discount, g) <= amplitude) n += 1;
   return n;
 }
 
 export function buyBuilding(state: GameState, tier: Tier, amount: BuyAmount): GameState {
-  const discount = costDiscountFor(state.echoes);
+  const { costDiscount: discount, growth } = derive(state);
   const owned = state.bought[tier];
-  const count = amount === 'max' ? maxAffordable(tier, owned, state.amplitude, discount) : amount;
+  const count =
+    amount === 'max' ? maxAffordable(tier, owned, state.amplitude, discount, growth[tier]) : amount;
   if (count < 1) return state;
-  const cost = buildingCost(tier, owned, count, discount);
+  const cost = buildingCost(tier, owned, count, discount, growth[tier]);
   if (!(cost <= state.amplitude)) return state;
   const bought: Quad = [...state.bought];
   bought[tier] = owned + count;
@@ -398,6 +437,14 @@ export function isUpgradeVisible(state: GameState, def: UpgradeDef): boolean {
 /* ------------------------------------------------------------------ */
 
 export function tap(state: GameState): GameState {
+  if (state.fabric.tapping) {
+    // Superposition Tapping: the tap is held as an Unresolved Waveform until observed.
+    return {
+      ...state,
+      fabric: addWaveform(state.fabric),
+      stats: { ...state.stats, taps: state.stats.taps + 1 },
+    };
+  }
   const gain = derive(state).tapGain;
   return {
     ...state,
@@ -440,6 +487,8 @@ export function amplitudeForEchoes(echoes: number): number {
 export interface EchoPayout {
   base: number;
   mult: number;
+  /** Echo Memory: extra Echoes from Ancestral Legacy, included in `published`. */
+  memory: number;
   /** What a normal Collapse pays. */
   published: number;
   /** What a forced black-hole collapse would pay. */
@@ -450,9 +499,10 @@ export interface EchoPayout {
 export function echoPayout(state: GameState): EchoPayout {
   const base = echoGain(state.runAmplitude);
   const mult = riskMultiplier(state.lab.minStability);
-  const published = Math.round(base * mult);
+  const memory = base >= 1 ? echoMemory(state.fabric) : 0;
+  const published = Math.round(base * mult) + memory;
   const blackHole = base > 0 ? Math.max(1, Math.floor(published * BLACK_HOLE_PAYOUT)) : 0;
-  return { base, mult, published, blackHole };
+  return { base, mult, memory, published, blackHole };
 }
 
 /** Starting Amplitude bonus for a new lab, scaled by banked Echoes and capped. */
@@ -462,12 +512,15 @@ export function legacyGrantFor(echoes: number): number {
 
 /**
  * Ends the current lab. A published lab pays the risk-weighted Echoes; a black
- * hole pays half of that. Everything else resets, a Legacy Grant seeds the next
- * lab, and the close call that pulled the lab back from Critical is carried on.
+ * hole pays half of that; a woven lab pays Threads instead of Echoes. Everything
+ * else resets, a Legacy Grant seeds the next lab, and the close call that pulled
+ * the lab back from Critical is carried on.
  */
 export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   const payout = echoPayout(state);
-  const earned = outcome === 'blackHole' ? payout.blackHole : payout.published;
+  const woven = outcome === 'woven';
+  const threads = woven ? threadsFor(state.runAmplitude, payout.mult) : 0;
+  const earned = woven ? 0 : outcome === 'blackHole' ? payout.blackHole : payout.published;
   const echoes = state.echoes + earned;
   const echoesEarned = state.echoesEarned + earned;
   const legacyGrant = legacyGrantFor(echoesEarned);
@@ -476,6 +529,14 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     perkTier !== null && !state.perks.includes(perkTier) ? [...state.perks, perkTier] : state.perks;
   const closed = state.stats.collapses + 1;
   const run = state.lab.run;
+
+  // Echo Memory remembers what a published lab paid before memory was added.
+  const closing = closeFabric(state.fabric, {
+    outcome,
+    minStability: state.lab.minStability,
+    echoes: outcome === 'published' ? Math.round(payout.base * payout.mult) : 0,
+    threads,
+  });
 
   const summary: RunSummary = {
     outcome,
@@ -491,6 +552,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     baseEchoes: payout.base,
     riskMult: payout.mult,
     echoesEarned: earned,
+    threadsEarned: threads,
     tapped: run.tapped,
     byTier: [...run.byTier],
     history: state.history.samples.slice(),
@@ -499,9 +561,17 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   };
 
   const lines: Line[] = [
-    outcome === 'blackHole' ? narrative.blackHole() : narrative.published(closed, earned),
+    outcome === 'blackHole'
+      ? narrative.blackHole()
+      : woven
+        ? narrative.woven(closed, threads)
+        : narrative.published(closed, earned),
     narrative.labOpened(closed + 1, state.lab.nextId),
   ];
+  if (closing.paired) lines.push(narrative.symmetricPair(closing.fabric.pairs));
+  if (state.echoesEarned < FABRIC_UNLOCK_ECHOES && echoesEarned >= FABRIC_UNLOCK_ECHOES) {
+    lines.push(narrative.fabricOpened());
+  }
   if (legacyGrant > 0) lines.push(narrative.legacy(legacyGrant, formatNumber(legacyGrant)));
   if (summary.perkTier !== null) lines.push(narrative.perk(summary.perkTier));
 
@@ -512,6 +582,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     echoes,
     echoesEarned,
     treesCleared: state.treesCleared,
+    fabric: closing.fabric,
     autobuyers: state.autobuyers,
     perks,
     lab: createLab(state.lab.rng, state.lab.nextId),

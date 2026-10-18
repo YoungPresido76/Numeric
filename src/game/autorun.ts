@@ -23,7 +23,7 @@ function blockedTiers(state: GameState): ReadonlySet<Tier> {
 
 /** One trigger: every enabled autobuyer buys what it can afford, up to its amount. */
 function trigger(state: GameState): GameState {
-  const discount = derive(state).costDiscount;
+  const { costDiscount: discount, growth } = derive(state);
   const blocked = blockedTiers(state);
   let amplitude = state.amplitude;
   const bought: Quad = [...state.bought];
@@ -36,11 +36,11 @@ function trigger(state: GameState): GameState {
     if (!isTierVisible({ ...state, bought }, tier)) continue;
 
     const owned = bought[tier];
-    const fit = maxAffordable(tier, owned, amplitude, discount);
+    const fit = maxAffordable(tier, owned, amplitude, discount, growth[tier]);
     const wanted = autobuyerAmount(autobuyer.level);
     const count = wanted === 'max' ? fit : Math.min(wanted, fit);
     if (count < 1) continue;
-    const cost = buildingCost(tier, owned, count, discount);
+    const cost = buildingCost(tier, owned, count, discount, growth[tier]);
     if (!(cost <= amplitude)) continue;
     amplitude -= cost;
     bought[tier] = owned + count;

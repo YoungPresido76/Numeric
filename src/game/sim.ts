@@ -17,7 +17,7 @@ export function step(state: GameState, dt: number): GameState {
   let produced = automated;
   for (const tier of newlyOwned(advanced, automated)) produced = noteForPurchase(produced, tier);
   const derived = derive(produced);
-  const costs = TIERS.map((tier) => buildingCost(tier, produced.bought[tier], 1, derived.costDiscount));
+  const costs = TIERS.map((tier) => buildingCost(tier, produced.bought[tier], 1, derived.costDiscount, derived.growth[tier]));
   const result = stepLab(produced, dt, derived.psPerSecond, costs);
   const stepped: GameState = {
     ...result.state,

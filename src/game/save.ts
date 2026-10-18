@@ -1,15 +1,19 @@
 import {
+  DECOHERENCE_MAX,
   GRANT_MILESTONES,
   HISTORY_MAX_SAMPLES,
   MAX_NOTES,
   SAVE_KEY,
   RESEARCH_MAIN_MAX,
   RESEARCH_TREES,
+  SYMMETRIC_MAX,
+  WAVE_STORE_CAP,
   ZONES,
   isUpgradeId,
 } from './data';
 import { AUTOBUYER_MAX_LEVEL, createAutobuyer } from './autobuyers';
 import { createInitialState } from './engine';
+import { createFabric } from './fabric';
 import { createHistory, createLab, createRunStats } from './lab';
 import { clamp, clampFinite } from './math';
 import { subCap } from './research';
@@ -17,11 +21,13 @@ import type {
   AutobuyerSet,
   AutobuyerState,
   Experiment,
+  FabricState,
   Failure,
   GameState,
   History,
   HistorySample,
   LabOutcome,
+  LabPeak,
   LabState,
   NoteLine,
   NoteTone,
@@ -53,7 +59,8 @@ const CORRUPT_BACKUP_KEY = `${SAVE_KEY}.corrupt`;
 /** Saves from the first prototype (no lab) are upgraded on load. */
 const READABLE_VERSIONS: readonly unknown[] = [1, 2];
 const NOTE_TONES: readonly NoteTone[] = ['info', 'good', 'warn', 'alert'];
-const OUTCOMES: readonly LabOutcome[] = ['published', 'blackHole'];
+const OUTCOMES: readonly LabOutcome[] = ['published', 'blackHole', 'woven'];
+const PEAKS: readonly LabPeak[] = ['stable', 'strained', 'survived', 'collapsed'];
 const MAX_TEXT = 400;
 const MAX_LIST = 12;
 
@@ -277,6 +284,7 @@ function readSummary(value: unknown): RunSummary | null {
     baseEchoes: readCount(value['baseEchoes']),
     riskMult: clamp(readNumber(value['riskMult'], 1, 1), 1, 5),
     echoesEarned: readCount(value['echoesEarned']),
+    threadsEarned: readCount(value['threadsEarned']),
     tapped: readNumber(value['tapped'], 0),
     byTier: readQuad(value['byTier'], false),
     history: readSamples(value['history'], HISTORY_MAX_SAMPLES),
@@ -312,6 +320,36 @@ function readResearch(value: unknown): ResearchState {
     grant: readTree(src['grant']),
     observation: readTree(src['observation']),
     calibration: readTree(src['calibration']),
+  };
+}
+
+function readFabric(value: unknown): FabricState {
+  const src = isRecord(value) ? value : {};
+  const base = createFabric();
+  const threadsEarned = readCount(src['threadsEarned']);
+  const dilation = isRecord(src['dilation']) ? src['dilation'] : {};
+  const decoherence = Array.isArray(src['decoherence']) ? (src['decoherence'] as unknown[]) : [];
+  const readDecoherence = (i: number): number => Math.min(DECOHERENCE_MAX, readCount(decoherence[i]));
+  const recent: LabPeak[] = [];
+  for (const entry of readList(src['recentLabs'], 2)) {
+    const peak = PEAKS.find((p) => p === entry);
+    if (peak) recent.push(peak);
+  }
+  return {
+    ...base,
+    threads: readCount(src['threads']),
+    threadsEarned,
+    weaves: readCount(src['weaves']),
+    decoherence: [readDecoherence(0), readDecoherence(1), readDecoherence(2), readDecoherence(3)],
+    tapping: src['tapping'] === true,
+    ancestral: src['ancestral'] === true,
+    wormholeUsed: src['wormholeUsed'] === true,
+    dilation: { activeLeft: readNumber(dilation['activeLeft'], 0) },
+    waveforms: Math.min(readNumber(src['waveforms'], 0), WAVE_STORE_CAP),
+    tapRate: readNumber(src['tapRate'], 0),
+    recentLabs: recent,
+    pairs: Math.min(readCount(src['pairs']), SYMMETRIC_MAX),
+    bestEchoes: readCount(src['bestEchoes']),
   };
 }
 
@@ -379,6 +417,7 @@ export function parseSave(raw: unknown, now: number): GameState | null {
     echoesEarned,
     research,
     treesCleared,
+    fabric: readFabric(raw['fabric']),
     autobuyers: readAutobuyers(raw['autobuyers']),
     autoClock: Math.min(readNumber(raw['autoClock'], 0), 1),
     perks: readPerks(raw['perks']),

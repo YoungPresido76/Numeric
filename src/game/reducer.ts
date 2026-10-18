@@ -1,5 +1,13 @@
 import { buyAutobuyer, toggleAutobuyer } from './autobuyers';
 import { activateSurge, buyBuilding, buyUpgrade, collapse, derive, tap } from './engine';
+import { buyDecoherence } from './fabric';
+import {
+  activateDilation,
+  buyThreadUpgrade,
+  installWormhole,
+  resolveWaveforms,
+  weave,
+} from './fabricOps';
 import { addNotes, neutralize, noteForPurchase, observe } from './lab';
 import { narrative, type Line } from './narrative';
 import { buyResearch, isTreeComplete } from './research';
@@ -37,6 +45,20 @@ function apply(state: GameState, action: GameAction): GameState {
     }
     case 'autoToggle':
       return toggleAutobuyer(state, action.tier);
+    case 'weave':
+      return weave(state);
+    case 'decoherence': {
+      const next = buyDecoherence(state, action.tier);
+      return next === state ? state : addNotes(next, [narrative.decoherence(action.tier)]);
+    }
+    case 'wormhole':
+      return installWormhole(state, action.at);
+    case 'dilate':
+      return activateDilation(state);
+    case 'threadUpgrade':
+      return buyThreadUpgrade(state, action.id);
+    case 'resolve':
+      return resolveWaveforms(state);
     case 'surge':
       return activateSurge(state);
     case 'collapse':

@@ -78,7 +78,46 @@ export type Zone = 'stable' | 'strained' | 'critical' | 'imminent';
 
 export type NoteTone = 'info' | 'good' | 'warn' | 'alert';
 
-export type LabOutcome = 'published' | 'blackHole';
+export type LabOutcome = 'published' | 'blackHole' | 'woven';
+
+/**
+ * How a finished lab ended, judged by its lowest point. Two labs that end as
+ * 'stable' and 'survived' form a Symmetric Pair when woven.
+ */
+export type LabPeak = 'stable' | 'strained' | 'survived' | 'collapsed';
+
+/** The Thread upgrades that are bought once and kept. */
+export type ThreadUpgradeId = 'tapping' | 'ancestral';
+
+/** Fabric (4D): Threads and everything bought with them. Persists through Collapse and Weave. */
+export interface FabricState {
+  /** Spendable Threads. */
+  threads: number;
+  /** Threads earned over all Weaves. */
+  threadsEarned: number;
+  /** Times the lab has been woven. */
+  weaves: number;
+  /** Cost Decoherence bought for each building tier. */
+  decoherence: Quad;
+  /** Superposition Tapping owned: taps make Unresolved Waveforms. */
+  tapping: boolean;
+  /** Ancestral Legacy owned: Echo Memory and Symmetric Pairs. */
+  ancestral: boolean;
+  /** A Temporal Wormhole was already installed in this lab. */
+  wormholeUsed: boolean;
+  /** Dilated Time window. */
+  dilation: { activeLeft: number };
+  /** Unresolved Waveforms waiting to be observed. */
+  waveforms: number;
+  /** Recent taps per second, smoothed. Weights the observation burst. */
+  tapRate: number;
+  /** How the last two finished labs ended, oldest first. */
+  recentLabs: LabPeak[];
+  /** Symmetric Pairs formed. Each adds a permanent production aura. */
+  pairs: number;
+  /** Most Echoes any single lab has paid. Feeds Echo Memory. */
+  bestEchoes: number;
+}
 
 export interface SurgeState {
   /** Seconds of Surge remaining (0 when inactive). */
@@ -238,6 +277,8 @@ export interface RunSummary {
   baseEchoes: number;
   riskMult: number;
   echoesEarned: number;
+  /** Threads paid by a Weave. Zero for any other ending. */
+  threadsEarned: number;
   tapped: number;
   byTier: Quad;
   history: HistorySample[];
@@ -265,6 +306,8 @@ export interface GameState {
   research: ResearchState;
   /** True once all three research trees have been fully ranked in a single lab. */
   treesCleared: boolean;
+  /** Threads and Thread upgrades. */
+  fabric: FabricState;
   /** One autobuyer per building tier. */
   autobuyers: AutobuyerSet;
   /** Seconds accumulated toward the next autobuyer trigger. */
@@ -324,6 +367,12 @@ export interface Derived {
   units: Quad;
   /** Per-unit output rate per tier after milestones and upgrades. */
   rates: Quad;
+  /** Cost growth per tier after Cost Decoherence. */
+  growth: Quad;
+  /** True while a Dilated Time window is open. */
+  dilated: boolean;
+  /** Production multiplier from Symmetric Pairs. */
+  pairAura: number;
   upgradeGlobal: number;
   surgeFactor: number;
   echoMult: number;
@@ -358,6 +407,12 @@ export type GameAction =
   | { type: 'research'; tree: TreeId; node: ResearchNode }
   | { type: 'autoBuy'; tier: Tier }
   | { type: 'autoToggle'; tier: Tier }
+  | { type: 'weave' }
+  | { type: 'decoherence'; tier: Tier }
+  | { type: 'wormhole'; at: number }
+  | { type: 'dilate' }
+  | { type: 'threadUpgrade'; id: ThreadUpgradeId }
+  | { type: 'resolve' }
   | { type: 'surge' }
   | { type: 'collapse' }
   | { type: 'observe'; target: ObserveTarget }
