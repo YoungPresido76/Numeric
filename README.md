@@ -26,6 +26,8 @@ Framing: ψ is a research budget, buildings are research projects, taps are obse
 - **Amplitude (ψ)** is the one resource. Tap the orb to observe, or fund projects.
 - **Four projects.** Qubits (Σ) add ψ. Superposition Gates (×), Entanglement Lattices (⊗) and Reality Branches (∥) each create the tier below. Cost growth is 1.22 / 1.65 / 1.85 / 2.05. Owning 10, 25 and 50 doubles output; Qubits and Gates also have a 100 milestone.
 - **Ten upgrades** are one-time boosts for the current lab.
+- **Research trees** (Upgrades tab, once a lab has produced 2,000 ψ or after any Collapse) are three lines: Grant Optimization (funds), Deep Observation (observation) and Experiment Calibration (experiments). Each has a Main upgrade with 3 stages and two Sub-upgrades. A Main stage unlocks when both Subs are at the current cap, which grows 4, 6, 8. Main stages give flat bonuses and each costs 5x the stage before. Sub ranks get dearer with every rank. All are paid in ψ. Research resets when the lab closes. Fully ranking all three lines in one lab is the Fabric completion condition and is tracked for it.
+- **Autobuyers** (Collapse tab) unlock after 10 Echoes earned in total. One per project, paid for in Echoes. The Qubit one costs 10 and each later project's costs 4x the one before (10, 40, 160, 640). Each ladder step costs 10x the previous. Install, then upgrade through ×1, ×2, ×4, ×16, ×32 and Max. Each triggers every second, buys the highest project first, waits while an experiment forbids a purchase, and can be paused from the Projects tab. They persist through Collapse and do not run offline. Spending Echoes does not weaken the Echo bonuses, which follow Echoes earned.
 - **Surge** is ×2 output for 10 s, 45 s recharge. While it runs you can observe any experiment instantly.
 - **Experiments are manual tasks.** Every project above Qubits starts a task with a clock: *earn* some ψ (sometimes without funding one tier), *fund* a project, *tap* the orb, or *hold* and fund nothing. Complete it for 15 s of production and +5 stability. Miss the clock or break the condition and the lab loses 8-15% of current ψ and 10-20 stability. Surge lets you observe any experiment, which completes its task instantly.
 - **Stability** is never shown as a number. Zones: Stable (70+), Strained (40-69), Critical (15-39), Collapse imminent (0-14). The background, orb, vignette and notebook change with the zone.
@@ -55,7 +57,7 @@ Times for a player who skips experiments are similar until stability collapses (
 ## Code map
 
 ```
-src/game/      pure game logic: data, engine, lab (experiments, stability), narrative, sim, reducer, save, store, audio, tutorial
+src/game/      pure game logic: data, engine, lab (experiments, stability), research, autobuyers, autorun, narrative, sim, reducer, save, store, audio, tutorial
 src/hooks/     React bindings for the store and small UI hooks
 src/components UI: stage (orb, equation, surge) and one panel per tab
 public/        manifest, service worker, icons
@@ -65,4 +67,4 @@ public/        manifest, service worker, icons
 
 ## Tuning
 
-Everything balance-related is in `src/game/data.ts`: project costs and rates, upgrade costs, Surge, experiment and stability constants, Echo formula, offline caps.
+Everything balance-related is in `src/game/data.ts`: project costs and rates, upgrade costs, research tree costs and effects, autobuyer costs, Surge, experiment and stability constants, Echo formula, offline caps.

@@ -1,19 +1,23 @@
-# Numeric 0.3.0 - files changed since 0.2.0
+# Numeric 0.4.0 - files changed since 0.3.0
 
-NEW (3):
-  src/components/IntroSequence.tsx
-  src/game/glyph.ts
-  src/hooks/useTypewriter.ts
+Adds Phase 5: research trees (A10) and autobuyers (A11).
 
-CHANGED (19):
+NEW (5):
+  src/components/AutobuyerSection.tsx
+  src/components/ResearchPanel.tsx
+  src/game/autobuyers.ts
+  src/game/autorun.ts
+  src/game/research.ts
+
+CHANGED (17):
+  CHANGES.txt
   README.md
   package.json
   src/App.tsx
-  src/components/ExperimentDock.tsx
-  src/components/LabPanel.tsx
-  src/components/NotebookStrip.tsx
-  src/components/Stage.tsx
-  src/components/SystemPanel.tsx
+  src/components/BuildingsPanel.tsx
+  src/components/CollapsePanel.tsx
+  src/components/UpgradesPanel.tsx
+  src/components/icons.tsx
   src/game/data.ts
   src/game/engine.ts
   src/game/lab.ts
@@ -21,9 +25,8 @@ CHANGED (19):
   src/game/reducer.ts
   src/game/save.ts
   src/game/sim.ts
-  src/game/tutorial.ts
   src/game/types.ts
   src/hooks/useGame.tsx
-  src/index.css
 
-Unzip over the project root (on top of 0.2.0), then: npm install && npm run build
+Saves from 0.3.0 load unchanged (new fields default safely).
+Unzip over the project root (on top of 0.3.0), then: npm install && npm run build
