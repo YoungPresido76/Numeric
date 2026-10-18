@@ -12,7 +12,15 @@ import { sound } from '../game/audio';
 import { zoneOf, zoneRank } from '../game/lab';
 import type { ImportResult } from '../game/save';
 import { GameStore, type Snapshot } from '../game/store';
-import type { BuyAmount, ObserveTarget, ResearchNode, Tier, TreeId, UpgradeId } from '../game/types';
+import type {
+  BuyAmount,
+  ObserveTarget,
+  ResearchNode,
+  ThreadUpgradeId,
+  Tier,
+  TreeId,
+  UpgradeId,
+} from '../game/types';
 
 const TICK_MS = 100;
 const AUTOSAVE_MS = 10_000;
@@ -26,6 +34,12 @@ export interface GameActions {
   toggleAutobuyer: (tier: Tier) => void;
   surge: () => void;
   collapse: () => void;
+  weave: () => void;
+  buyDecoherence: (tier: Tier) => void;
+  installWormhole: (at: number) => void;
+  dilate: () => void;
+  buyThreadUpgrade: (id: ThreadUpgradeId) => void;
+  resolveWaveforms: () => void;
   observe: (target: ObserveTarget) => void;
   neutralize: (id: number) => void;
   dismissSummary: () => void;
@@ -85,6 +99,48 @@ function createActions(store: GameStore): GameActions {
       if (store.dispatch({ type: 'collapse' })) {
         sound.play('collapse');
         store.save();
+      }
+    },
+    weave: () => {
+      sound.unlock();
+      if (store.dispatch({ type: 'weave' })) {
+        sound.play('collapse');
+        store.save();
+      }
+    },
+    buyDecoherence: (tier) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'decoherence', tier })) {
+        sound.play('upgrade');
+        store.save();
+      }
+    },
+    installWormhole: (at) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'wormhole', at })) {
+        sound.play('success');
+        store.save();
+      }
+    },
+    dilate: () => {
+      sound.unlock();
+      if (store.dispatch({ type: 'dilate' })) {
+        sound.play('surge');
+        store.save();
+      }
+    },
+    buyThreadUpgrade: (id) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'threadUpgrade', id })) {
+        sound.play('upgrade');
+        store.save();
+      }
+    },
+    resolveWaveforms: () => {
+      sound.unlock();
+      const before = store.getSnapshot().state.amplitude;
+      if (store.dispatch({ type: 'resolve' })) {
+        sound.play(store.getSnapshot().state.amplitude > before ? 'success' : 'fail');
       }
     },
     // Observation sounds come from the result (success or failure), see GameProvider.
