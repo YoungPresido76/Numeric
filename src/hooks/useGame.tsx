@@ -38,6 +38,7 @@ export interface GameActions {
   buyDecoherence: (tier: Tier) => void;
   installWormhole: (at: number) => void;
   dilate: () => void;
+  stitch: () => void;
   buyThreadUpgrade: (id: ThreadUpgradeId) => void;
   resolveWaveforms: () => void;
   observe: (target: ObserveTarget) => void;
@@ -126,6 +127,13 @@ function createActions(store: GameStore): GameActions {
       sound.unlock();
       if (store.dispatch({ type: 'dilate' })) {
         sound.play('surge');
+        store.save();
+      }
+    },
+    stitch: () => {
+      sound.unlock();
+      if (store.dispatch({ type: 'stitch' })) {
+        sound.play('success');
         store.save();
       }
     },
