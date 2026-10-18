@@ -51,6 +51,170 @@
 }
 
 @layer components {
+  /* Stability zones recolour the whole interface through these variables. */
+  .zone-root {
+    --zone-a: #7df3ff;
+    --zone-b: #7c5cff;
+    --zone-ink: #a5f3fc;
+    --orb-a: var(--zone-a);
+    --orb-b: var(--zone-b);
+  }
+  .zone-root[data-zone='strained'] {
+    --zone-a: #ffc46b;
+    --zone-b: #ff8a3d;
+    --zone-ink: #fde68a;
+  }
+  .zone-root[data-zone='critical'] {
+    --zone-a: #ff7a7a;
+    --zone-b: #e11d48;
+    --zone-ink: #fecaca;
+  }
+  .zone-root[data-zone='imminent'] {
+    --zone-a: #ff4d6d;
+    --zone-b: #9f1239;
+    --zone-ink: #fecdd3;
+  }
+  .orb-surge {
+    --orb-a: #e6f6ff;
+    --orb-b: #38bdf8;
+  }
+
+  .zone-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 900ms ease;
+  }
+  .zone-overlay[data-zone='strained'] {
+    opacity: 1;
+    background: radial-gradient(120% 80% at 50% 110%, rgba(255, 170, 60, 0.15), transparent 62%);
+  }
+  .zone-overlay[data-zone='critical'] {
+    opacity: 1;
+    background: radial-gradient(120% 90% at 50% 50%, transparent 38%, rgba(255, 50, 70, 0.24) 100%);
+    animation: zone-pulse 2.4s ease-in-out infinite;
+  }
+  .zone-overlay[data-zone='imminent'] {
+    opacity: 1;
+    background: radial-gradient(120% 90% at 50% 50%, rgba(0, 0, 0, 0.38) 30%, rgba(255, 20, 60, 0.4) 100%);
+    animation: zone-pulse 0.9s ease-in-out infinite;
+  }
+
+  /* Active projects breathe softly. The glow colour is set per tile. */
+  .tile-active {
+    animation: tile-pulse 3.4s ease-in-out infinite;
+  }
+
+  /* Soft trails drifting from the projects up to the counter. */
+  .flow-lane {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .flow-dot {
+    position: absolute;
+    width: 2px;
+    height: 28px;
+    border-radius: 2px;
+    background: linear-gradient(to top, transparent, var(--zone-a));
+    opacity: 0;
+    animation: flow-up 3.4s ease-in infinite;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 6px;
+    height: 1em;
+    margin-left: 2px;
+    vertical-align: -2px;
+    background: currentColor;
+    animation: blink 1s steps(2, start) infinite;
+  }
+
+  .dock-in {
+    animation: dock-in 260ms ease-out both;
+  }
+  .superposed {
+    animation: superposed 1.4s ease-in-out infinite;
+  }
+
+  /* Galaxy backdrop: parallax star layers and nebula glows. Used only behind Collapse and between labs. */
+  .galaxy {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 0%, #15123a 0%, #07070f 70%);
+  }
+  .galaxy[data-variant='ember'] {
+    background: radial-gradient(120% 90% at 50% 0%, #2a1320 0%, #07070f 70%);
+  }
+  .galaxy[data-variant='void'] {
+    background: radial-gradient(90% 70% at 50% 50%, #000 0%, #05050a 60%, #0b0414 100%);
+  }
+  .nebula {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(46px);
+    opacity: 0.45;
+  }
+  .galaxy[data-variant='violet'] .nebula-1 { background: #6d28d9; }
+  .galaxy[data-variant='violet'] .nebula-2 { background: #0e7490; }
+  .galaxy[data-variant='ember'] .nebula-1 { background: #be123c; }
+  .galaxy[data-variant='ember'] .nebula-2 { background: #7c3aed; }
+  .galaxy[data-variant='void'] .nebula-1 { background: #4c1d95; opacity: 0.3; }
+  .galaxy[data-variant='void'] .nebula-2 { background: #9f1239; opacity: 0.25; }
+  .stars {
+    position: absolute;
+    inset: 0;
+    background-repeat: repeat;
+  }
+  .stars-a {
+    background-image:
+      radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+      radial-gradient(1px 1px at 90px 140px, #cfe8ff, transparent),
+      radial-gradient(1.5px 1.5px at 160px 60px, #fff, transparent),
+      radial-gradient(1px 1px at 130px 190px, #e9d5ff, transparent);
+    background-size: 200px 200px;
+    opacity: 0.55;
+    animation: drift-a 140s linear infinite;
+  }
+  .stars-b {
+    background-image:
+      radial-gradient(1.5px 1.5px at 40px 70px, #fff, transparent),
+      radial-gradient(1px 1px at 210px 120px, #bae6fd, transparent),
+      radial-gradient(1.5px 1.5px at 120px 250px, #fff, transparent),
+      radial-gradient(1px 1px at 270px 30px, #f5d0fe, transparent);
+    background-size: 310px 310px;
+    opacity: 0.7;
+    animation: drift-b 90s linear infinite;
+  }
+  .stars-c {
+    background-image:
+      radial-gradient(2px 2px at 60px 90px, #fff, transparent),
+      radial-gradient(2px 2px at 300px 200px, #e0f2fe, transparent),
+      radial-gradient(2px 2px at 180px 340px, #fff, transparent);
+    background-size: 420px 420px;
+    opacity: 0.9;
+    animation: drift-c 55s linear infinite;
+  }
+
+  .singularity {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 260px;
+    height: 260px;
+    margin: -130px 0 0 -130px;
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle, #000 0 30%, transparent 31%),
+      conic-gradient(from 0deg, rgba(255, 140, 60, 0), rgba(255, 140, 60, 0.8), rgba(124, 92, 255, 0.6), rgba(255, 140, 60, 0));
+    animation: singularity 1.9s ease-in forwards;
+  }
+
   /* Orb: orbital rings that rotate around the viewBox centre. */
   .orb-ring {
     transform-box: view-box;
@@ -153,6 +317,102 @@
   }
 }
 
+@keyframes zone-pulse {
+  0%,
+  100% {
+    filter: brightness(0.75);
+  }
+  50% {
+    filter: brightness(1.45);
+  }
+}
+
+@keyframes tile-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--tile-glow, 125 211 252) / 0);
+  }
+  50% {
+    box-shadow: 0 0 14px 1px rgb(var(--tile-glow, 125 211 252) / 0.3);
+  }
+}
+
+@keyframes flow-up {
+  0% {
+    top: 100%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  85% {
+    opacity: 0.3;
+  }
+  100% {
+    top: -12%;
+    opacity: 0;
+  }
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes superposed {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translateX(-3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+}
+
+@keyframes drift-a {
+  to {
+    background-position: 200px 200px;
+  }
+}
+@keyframes drift-b {
+  to {
+    background-position: -310px 310px;
+  }
+}
+@keyframes drift-c {
+  to {
+    background-position: 420px 420px;
+  }
+}
+
+@keyframes singularity {
+  0% {
+    transform: rotate(0deg) scale(1.7);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(540deg) scale(0.15);
+    opacity: 0.9;
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -176,8 +436,19 @@
   .orb-hit,
   .floater,
   .chip-flash,
-  .fade-in {
+  .fade-in,
+  .tile-active,
+  .flow-dot,
+  .caret,
+  .dock-in,
+  .superposed,
+  .zone-overlay,
+  .stars,
+  .singularity {
     animation: none !important;
+  }
+  .flow-dot {
+    display: none;
   }
   .floater {
     opacity: 0;
