@@ -12,7 +12,7 @@ import { sound } from '../game/audio';
 import { zoneOf, zoneRank } from '../game/lab';
 import type { ImportResult } from '../game/save';
 import { GameStore, type Snapshot } from '../game/store';
-import type { BuyAmount, ObserveTarget, Tier, UpgradeId } from '../game/types';
+import type { BuyAmount, ObserveTarget, ResearchNode, Tier, TreeId, UpgradeId } from '../game/types';
 
 const TICK_MS = 100;
 const AUTOSAVE_MS = 10_000;
@@ -21,6 +21,9 @@ export interface GameActions {
   tap: () => void;
   buy: (tier: Tier, amount: BuyAmount) => void;
   buyUpgrade: (id: UpgradeId) => void;
+  buyResearch: (tree: TreeId, node: ResearchNode) => void;
+  buyAutobuyer: (tier: Tier) => void;
+  toggleAutobuyer: (tier: Tier) => void;
   surge: () => void;
   collapse: () => void;
   observe: (target: ObserveTarget) => void;
@@ -57,6 +60,21 @@ function createActions(store: GameStore): GameActions {
     buyUpgrade: (id) => {
       sound.unlock();
       if (store.dispatch({ type: 'upgrade', id })) sound.play('upgrade');
+    },
+    buyResearch: (tree, node) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'research', tree, node })) sound.play('upgrade');
+    },
+    buyAutobuyer: (tier) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'autoBuy', tier })) {
+        sound.play('upgrade');
+        store.save();
+      }
+    },
+    toggleAutobuyer: (tier) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'autoToggle', tier })) sound.play('tap');
     },
     surge: () => {
       sound.unlock();
