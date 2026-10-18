@@ -17,8 +17,10 @@ import { WaveBackground } from './components/WaveBackground';
 import { ZoneBanner } from './components/ZoneBanner';
 import { ZoneOverlay } from './components/ZoneOverlay';
 import { UPGRADES } from './game/data';
+import { canAffordAutobuyer } from './game/autobuyers';
 import { echoGain, isUpgradeVisible } from './game/engine';
 import { clamp } from './game/math';
+import { canAffordResearch } from './game/research';
 import { TUTORIAL_STEPS } from './game/tutorial';
 import type { BuyAmount } from './game/types';
 import { useGame } from './hooks/useGame';
@@ -38,9 +40,10 @@ export default function App(): ReactElement {
   const hintTab: TabId | null = step && step.isVisible(state) ? step.hintTab : null;
 
   const badges: Partial<Record<TabId, boolean>> = {
-    upgrades: UPGRADES.some((u) => isUpgradeVisible(state, u) && state.amplitude >= u.cost),
+    upgrades:
+      UPGRADES.some((u) => isUpgradeVisible(state, u) && state.amplitude >= u.cost) || canAffordResearch(state),
     lab: state.lab.experiments.length > 0 || state.lab.failures.length > 0,
-    collapse: echoGain(state.runAmplitude) >= 1,
+    collapse: echoGain(state.runAmplitude) >= 1 || canAffordAutobuyer(state),
   };
 
   let panel: ReactElement;
@@ -53,17 +56,25 @@ export default function App(): ReactElement {
           amount={amount}
           onAmountChange={setAmount}
           onBuy={actions.buy}
+          onToggleAuto={actions.toggleAutobuyer}
         />
       );
       break;
     case 'upgrades':
-      panel = <UpgradesPanel state={state} onBuy={actions.buyUpgrade} />;
+      panel = <UpgradesPanel state={state} onBuy={actions.buyUpgrade} onResearch={actions.buyResearch} />;
       break;
     case 'lab':
       panel = <LabPanel state={state} zone={zone} />;
       break;
     case 'collapse':
-      panel = <CollapsePanel state={state} onCollapse={actions.collapse} />;
+      panel = (
+        <CollapsePanel
+          state={state}
+          onCollapse={actions.collapse}
+          onAutoBuy={actions.buyAutobuyer}
+          onAutoToggle={actions.toggleAutobuyer}
+        />
+      );
       break;
     case 'system':
       panel = <SystemPanel snapshot={snapshot} actions={actions} />;
