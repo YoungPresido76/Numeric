@@ -5,6 +5,7 @@ import { describeTask } from '../game/narrative';
 import { clamp, formatNumber } from '../game/math';
 import type { Experiment, Failure, GameState, ObserveTarget } from '../game/types';
 import { Eye, ShieldCheck, TIER_GLOW, TIER_ICONS, TIER_TILE } from './icons';
+import './hud.css';
 
 interface ExperimentDockProps {
   state: GameState;
@@ -33,7 +34,7 @@ function ExperimentCard({ state, experiment, surging, onObserve }: ExperimentCar
 
   return (
     <li
-      className="dock-in relative overflow-hidden rounded-2xl border border-white/15 bg-panel/95 shadow-lg shadow-black/40 backdrop-blur"
+      className="alert-in relative overflow-hidden rounded-2xl border border-white/15 bg-panel/95 shadow-lg shadow-black/40 backdrop-blur"
       style={{ '--tile-glow': TIER_GLOW[experiment.tier] } as CSSProperties}
     >
       <div className="flex items-center gap-3 p-2.5">
@@ -90,7 +91,7 @@ function FailureCard({ failure, cost, affordable, onNeutralize }: FailureCardPro
   const progress = clamp(failure.left / NEUTRALIZE_WINDOW, 0, 1);
 
   return (
-    <li className="dock-in relative overflow-hidden rounded-2xl border border-rose-400/40 bg-panel/95 shadow-lg shadow-black/40 backdrop-blur">
+    <li className="alert-in relative overflow-hidden rounded-2xl border border-rose-400/40 bg-panel/95 shadow-lg shadow-black/40 backdrop-blur">
       <div className="flex items-center gap-3 p-2.5">
         <span
           aria-hidden="true"
@@ -129,7 +130,7 @@ function FailureCard({ failure, cost, affordable, onNeutralize }: FailureCardPro
 
 /**
  * Time-sensitive work, visible on every tab: experiment tasks to complete
- * before their clock runs out, and failures waiting to be neutralized. Floats above the tab bar.
+ * before their clock runs out, and failures waiting to be neutralized. Rendered inside the AlertStack under the news ticker.
  */
 export function ExperimentDock({ state, onObserve, onNeutralize }: ExperimentDockProps): ReactElement | null {
   const surging = state.surge.activeLeft > 0;
@@ -152,10 +153,10 @@ export function ExperimentDock({ state, onObserve, onNeutralize }: ExperimentDoc
   const hidden = cards.length - visible.length;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-2" aria-label="Lab alerts">
-      <ul className="pointer-events-auto space-y-1.5">{visible}</ul>
+    <section aria-label="Lab alerts" className="px-3 pb-2">
+      <ul className="space-y-1.5">{visible}</ul>
       {showAll || hidden > 0 ? (
-        <div className="pointer-events-auto mt-1.5 flex items-center justify-between gap-2">
+        <div className="mt-1.5 flex items-center justify-between gap-2">
           {hidden > 0 ? (
             <span className="rounded-full bg-black/60 px-2.5 py-1 font-numeric text-[11px] text-slate-300">
               +{hidden} more
@@ -174,7 +175,7 @@ export function ExperimentDock({ state, onObserve, onNeutralize }: ExperimentDoc
           ) : null}
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }
 

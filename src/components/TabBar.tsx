@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
-import { FlaskConical, Layers, Orbit, Settings, TrendingUp, Waypoints } from './icons';
+import { FlaskConical, Layers, Orbit, TrendingUp, Waypoints } from './icons';
 
-export type TabId = 'build' | 'upgrades' | 'lab' | 'collapse' | 'fabric' | 'system';
+export type TabId = 'build' | 'upgrades' | 'lab' | 'collapse' | 'fabric';
 
 interface TabBarProps {
   active: TabId;
@@ -26,7 +26,6 @@ const TABS: readonly TabDef[] = [
   { id: 'lab', label: 'Lab', Icon: FlaskConical },
   { id: 'collapse', label: 'Collapse', Icon: Orbit },
   { id: 'fabric', label: 'Fabric', Icon: Waypoints },
-  { id: 'system', label: 'System', Icon: Settings },
 ];
 
 export function TabBar({ active, onSelect, hintTab, badges, showFabric }: TabBarProps): ReactElement {
@@ -35,7 +34,7 @@ export function TabBar({ active, onSelect, hintTab, badges, showFabric }: TabBar
     <nav
       role="tablist"
       aria-label="Game sections"
-      className={`grid shrink-0 ${showFabric ? 'grid-cols-6' : 'grid-cols-5'} border-t bg-void/90 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-colors duration-700`}
+      className={`grid shrink-0 ${showFabric ? 'grid-cols-5' : 'grid-cols-4'} border-t bg-void/90 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-colors duration-700`}
       style={{ borderTopColor: 'color-mix(in srgb, var(--zone-a) 28%, transparent)' }}
     >
       {tabs.map(({ id, label, Icon }) => {

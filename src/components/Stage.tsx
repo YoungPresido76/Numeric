@@ -1,12 +1,10 @@
 import type { ReactElement } from 'react';
-import { ketFor } from '../game/glyph';
+import { SURGE_MULT } from '../game/data';
+import { setbackChance } from '../game/fabricOps';
 import { formatDuration, formatNumber, formatWhole } from '../game/math';
 import type { Snapshot } from '../game/store';
-import { EquationTicker } from './EquationTicker';
 import { FlowTrail } from './FlowTrail';
 import { Orb } from './Orb';
-import { SurgeButton } from './SurgeButton';
-import { WaveformBar } from './WaveformBar';
 
 interface StageProps {
   snapshot: Snapshot;
@@ -15,17 +13,32 @@ interface StageProps {
   onResolve: () => void;
 }
 
-/** Top section: title, funds readout, the observation orb, the live equation and the Surge ability. */
+function seconds(value: number): string {
+  return value < 10 ? `${value.toFixed(1)}s` : formatDuration(value);
+}
+
+/**
+ * Compact top section: title, funds, the ring-wrapped orb and two status chips.
+ * The chips mirror the Surge and waveform rings and give keyboard and
+ * screen-reader users a plain button for each.
+ */
 export function Stage({ snapshot, onTap, onSurge, onResolve }: StageProps): ReactElement {
   const { state, derived } = snapshot;
-  const surging = state.surge.activeLeft > 0;
-  const ket = ketFor(state.amplitude);
+  const { surge } = state;
+  const surging = surge.activeLeft > 0;
+  const cooling = !surging && surge.cooldownLeft > 0;
+  const tapping = state.fabric.tapping;
+  const count = Math.floor(state.fabric.waveforms);
+  const risk = setbackChance(state);
+
+  const surgeLabel = surging
+    ? `Surge ×${SURGE_MULT} · ${seconds(surge.activeLeft)}`
+    : cooling
+      ? `Recharging · ${seconds(surge.cooldownLeft)}`
+      : 'Surge ready';
 
   return (
-    <section
-      aria-label="Lab"
-      className="relative flex shrink-0 flex-col gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 sm:gap-3 sm:pt-5"
-    >
+    <section aria-label="Lab" className="relative flex shrink-0 flex-col gap-1 px-4 pt-2 pb-1">
       <FlowTrail rate={derived.psPerSecond} />
 
       <header className="relative flex items-center justify-between">
@@ -42,41 +55,68 @@ export function Stage({ snapshot, onTap, onSurge, onResolve }: StageProps): Reac
       </header>
 
       <div className="relative text-center" aria-live="off">
-        <p className="ghost-text font-display text-4xl leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(125,243,255,0.4)] sm:text-5xl">
+        <p className="ghost-text font-display text-4xl leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(125,243,255,0.4)] sm:text-[2.75rem]">
           {formatWhole(state.amplitude)}
-          <span className="ml-1.5 text-3xl italic sm:text-4xl" style={{ color: 'var(--zone-a)' }}>
+          <span className="ml-1.5 italic" style={{ color: 'var(--zone-a)' }}>
             ψ
           </span>
         </p>
-        {ket ? (
-          <p aria-hidden="true" className="mt-1 font-numeric text-[11px] tracking-widest text-slate-500">
-            {ket}
-          </p>
-        ) : null}
-        <p
-          className={`ghost-text mt-1 font-numeric text-sm tabular-nums ${surging ? 'text-sky-200' : 'text-violet-200/80'}`}
-        >
+        <p className={`ghost-text mt-1 font-numeric text-xs tabular-nums ${surging ? 'text-sky-200' : 'text-violet-200/80'}`}>
           +{formatNumber(derived.psPerSecond)} ψ/s
           <span className="sr-only"> research budget</span>
+          {derived.dilated ? (
+            <span className="ml-2 text-teal-200">dilated {formatDuration(Math.ceil(state.fabric.dilation.activeLeft))}</span>
+          ) : null}
         </p>
-        {derived.dilated ? (
-          <p className="mt-0.5 font-numeric text-[11px] text-teal-200">
-            Time dilated · {formatDuration(Math.ceil(state.fabric.dilation.activeLeft))}
-          </p>
-        ) : null}
       </div>
 
-      <Orb tapGain={derived.tapGain} surging={surging} waveform={state.fabric.tapping} onTap={onTap} />
-      {state.fabric.tapping ? <WaveformBar state={state} onResolve={onResolve} /> : null}
-      <div className="[@media(max-height:640px)]:hidden">
-        <EquationTicker derived={derived} />
-      </div>
-      <SurgeButton
-        surge={state.surge}
-        duration={derived.surgeDuration}
-        cooldown={derived.surgeCooldown}
-        onActivate={onSurge}
+      <Orb
+        tapGain={derived.tapGain}
+        surge={surge}
+        surgeDuration={derived.surgeDuration}
+        surgeCooldown={derived.surgeCooldown}
+        waveform={tapping}
+        waveforms={state.fabric.waveforms}
+        setbackRisk={risk}
+        onTap={onTap}
+        onSurge={onSurge}
+        onResolve={onResolve}
       />
+
+      <div className="flex justify-center gap-2">
+        <button
+          type="button"
+          onClick={onSurge}
+          disabled={surging || cooling}
+          aria-label={`Superposition Surge. ${surgeLabel}`}
+          className={`h-8 touch-manipulation rounded-full border px-3 font-numeric text-[11px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
+            surging
+              ? 'border-sky-200/60 bg-sky-300/10 text-sky-100'
+              : cooling
+                ? 'border-white/10 bg-white/[0.04] text-slate-400'
+                : 'border-cyan-300/50 bg-white/[0.04] text-cyan-50 active:scale-95'
+          }`}
+        >
+          ⚡ {surgeLabel}
+        </button>
+        {tapping ? (
+          <button
+            type="button"
+            onClick={onResolve}
+            disabled={count < 1}
+            aria-label={`Observe ${count} unresolved waveforms${risk > 0 ? `. ${Math.round(risk * 100)} percent chance of a setback` : ''}`}
+            className={`h-8 touch-manipulation rounded-full border px-3 font-numeric text-[11px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
+              count < 1
+                ? 'border-white/10 bg-white/[0.04] text-slate-500'
+                : risk > 0
+                  ? 'border-amber-300/60 bg-amber-300/10 text-amber-100 active:scale-95'
+                  : 'border-teal-300/60 bg-teal-300/10 text-teal-100 active:scale-95'
+            }`}
+          >
+            ∿ {count < 1 ? 'Tap to build waves' : `Observe ${formatNumber(count)}${risk > 0 ? ` · ${Math.round(risk * 100)}% risk` : ''}`}
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

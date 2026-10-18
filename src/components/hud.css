@@ -1,0 +1,62 @@
+/* Compact HUD: ticker, top alerts, info sheet and the ring states around the orb. */
+@keyframes ticker-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ring-breathe {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.ticker-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: ticker-scroll var(--ticker-dur, 30s) linear infinite;
+  will-change: transform;
+}
+
+.alert-in {
+  animation: alert-in 240ms ease-out both;
+}
+
+.sheet-in {
+  animation: sheet-in 220ms ease-out both;
+}
+
+.ring-ready {
+  animation: ring-breathe 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .alert-in,
+  .sheet-in,
+  .ring-ready {
+    animation: none;
+  }
+}
