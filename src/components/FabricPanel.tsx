@@ -12,6 +12,8 @@ import {
   SYMMETRIC_AURA,
   SYMMETRIC_MAX,
   TAPPING_COST,
+  TEAR_LAYER_BONUS,
+  TEAR_LAYER_CAP,
   TIERS,
   WORMHOLE_CAP,
   WORMHOLE_COST,
@@ -19,7 +21,7 @@ import {
   WORMHOLE_MIN_SECONDS,
 } from '../game/data';
 import { echoPayout } from '../game/engine';
-import { decoherenceCost, echoMemory, growthFor } from '../game/fabric';
+import { decoherenceCost, echoMemory, growthFor, shatterMult, tearCost } from '../game/fabric';
 import {
   canDilate,
   canWeave,
@@ -383,6 +385,33 @@ function AncestralCard({ state, id, onBuy }: OnceCardProps): ReactElement {
   );
 }
 
+function TearCard({ state }: { state: GameState }): ReactElement {
+  const { fabric } = state;
+  return (
+    <Card icon={<Spline className="size-5" strokeWidth={1.7} />} title="Continuum Tear">
+      <p className="text-xs leading-snug text-slate-400">
+        When a lab is about to fall into a black hole, the last-chance window opens as a Tear. Spend Threads before
+        it runs out to stitch it closed: the lab survives with some stability back, and you gain a permanent
+        Shattered Reality Layer (+{percent(TEAR_LAYER_BONUS)} production each, up to {TEAR_LAYER_CAP}). If the window
+        runs out, the lab collapses as usual. Ordinary failures still work the old way.
+      </p>
+      <div className="grid grid-cols-2 gap-2 text-center">
+        <div className="rounded-xl bg-black/25 px-2 py-2">
+          <p className="text-[10px] tracking-wide text-slate-400 uppercase">Layers</p>
+          <p className="mt-0.5 font-numeric text-sm text-teal-100">
+            {fabric.shattered}/{TEAR_LAYER_CAP} · ×{shatterMult(fabric).toFixed(2)}
+          </p>
+        </div>
+        <div className="rounded-xl bg-black/25 px-2 py-2">
+          <p className="text-[10px] tracking-wide text-slate-400 uppercase">Next stitch</p>
+          <p className="mt-0.5 font-numeric text-sm text-teal-100">{formatNumber(tearCost(fabric))} θ</p>
+        </div>
+      </div>
+      <p className="font-numeric text-[11px] text-slate-500">{fabric.tears} stitched in total.</p>
+    </Card>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Progress toward the next plane                                      */
 /* ------------------------------------------------------------------ */
@@ -456,6 +485,7 @@ export function FabricPanel({
       <DilationCard state={state} onDilate={onDilate} />
       <TappingCard state={state} id="tapping" onBuy={onThreadUpgrade} />
       <AncestralCard state={state} id="ancestral" onBuy={onThreadUpgrade} />
+      <TearCard state={state} />
       <NextPlaneCard state={state} />
     </div>
   );
