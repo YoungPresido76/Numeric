@@ -1,15 +1,30 @@
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { UPGRADES } from '../game/data';
 import { isUpgradeVisible } from '../game/engine';
 import { formatNumber } from '../game/math';
-import type { GameState, UpgradeId } from '../game/types';
+import { isResearchUnlocked } from '../game/research';
+import type { GameState, ResearchNode, TreeId, UpgradeId } from '../game/types';
+import { ResearchPanel } from './ResearchPanel';
 
 interface UpgradesPanelProps {
   state: GameState;
   onBuy: (id: UpgradeId) => void;
+  onResearch: (tree: TreeId, node: ResearchNode) => void;
 }
 
-export function UpgradesPanel({ state, onBuy }: UpgradesPanelProps): ReactElement {
+type View = 'upgrades' | 'research';
+
+const VIEWS: readonly { value: View; label: string }[] = [
+  { value: 'upgrades', label: 'Upgrades' },
+  { value: 'research', label: 'Research' },
+];
+
+interface UpgradeListProps {
+  state: GameState;
+  onBuy: (id: UpgradeId) => void;
+}
+
+function UpgradeList({ state, onBuy }: UpgradeListProps): ReactElement {
   const acquired = UPGRADES.filter((u) => state.upgrades.includes(u.id));
   const unbought = UPGRADES.filter((u) => !state.upgrades.includes(u.id));
   const visible = unbought.filter((u) => isUpgradeVisible(state, u));
@@ -94,6 +109,46 @@ export function UpgradesPanel({ state, onBuy }: UpgradesPanelProps): ReactElemen
           </ul>
         </details>
       ) : null}
+    </div>
+  );
+}
+
+export function UpgradesPanel({ state, onBuy, onResearch }: UpgradesPanelProps): ReactElement {
+  const [view, setView] = useState<View>('upgrades');
+  const researchOpen = isResearchUnlocked(state);
+
+  if (!researchOpen) return <UpgradeList state={state} onBuy={onBuy} />;
+
+  return (
+    <div className="space-y-3">
+      <div
+        role="radiogroup"
+        aria-label="Upgrades or research"
+        className="grid grid-cols-2 rounded-xl border border-white/10 bg-white/[0.04] p-0.5"
+      >
+        {VIEWS.map((option) => {
+          const selected = option.value === view;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setView(option.value)}
+              className={`min-h-10 touch-manipulation rounded-[10px] px-3 text-xs font-semibold transition-colors ${
+                selected ? 'bg-violet-300 text-slate-950' : 'text-slate-400 active:text-slate-100'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      {view === 'upgrades' ? (
+        <UpgradeList state={state} onBuy={onBuy} />
+      ) : (
+        <ResearchPanel state={state} onBuy={onResearch} />
+      )}
     </div>
   );
 }

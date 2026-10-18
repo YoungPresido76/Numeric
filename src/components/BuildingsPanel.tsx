@@ -7,6 +7,7 @@ import {
   milestoneMult,
   nextMilestone,
 } from '../game/engine';
+import { amountLabel, autobuyerAmount } from '../game/autobuyers';
 import { clamp, formatNumber } from '../game/math';
 import type { BuyAmount, Derived, GameState, Tier } from '../game/types';
 import { TIER_BAR, TIER_GLOW, TIER_ICONS, TIER_TILE } from './icons';
@@ -17,6 +18,7 @@ interface BuildingsPanelProps {
   amount: BuyAmount;
   onAmountChange: (amount: BuyAmount) => void;
   onBuy: (tier: Tier, amount: BuyAmount) => void;
+  onToggleAuto: (tier: Tier) => void;
 }
 
 const AMOUNTS: readonly { value: BuyAmount; label: string }[] = [
@@ -31,9 +33,10 @@ interface BuildingCardProps {
   derived: Derived;
   amount: BuyAmount;
   onBuy: (tier: Tier, amount: BuyAmount) => void;
+  onToggleAuto: (tier: Tier) => void;
 }
 
-function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps): ReactElement {
+function BuildingCard({ tier, state, derived, amount, onBuy, onToggleAuto }: BuildingCardProps): ReactElement {
   const def = BUILDINGS[tier];
   const Icon = TIER_ICONS[tier];
   const owned = state.bought[tier];
@@ -48,6 +51,8 @@ function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps
   const milestone = nextMilestone(tier, owned);
   const mult = milestoneMult(tier, owned);
   const progress = milestone === null ? 1 : clamp(owned / milestone, 0, 1);
+
+  const autobuyer = state.autobuyers[tier];
 
   const perUnit =
     tier === 0
@@ -93,6 +98,19 @@ function BuildingCard({ tier, state, derived, amount, onBuy }: BuildingCardProps
             {milestone === null ? 'all ×2 steps done' : `×2 at ${milestone}`}
           </span>
         </div>
+        {autobuyer.owned ? (
+          <button
+            type="button"
+            onClick={() => onToggleAuto(tier)}
+            aria-pressed={autobuyer.enabled}
+            aria-label={`${def.name} autobuyer ${autobuyer.enabled ? 'running' : 'paused'}. Tap to ${autobuyer.enabled ? 'pause' : 'resume'}.`}
+            className={`mt-1.5 min-h-7 touch-manipulation rounded-md px-2 font-numeric text-[10px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
+              autobuyer.enabled ? 'bg-cyan-300/20 text-cyan-100' : 'bg-white/10 text-slate-400'
+            }`}
+          >
+            Auto {amountLabel(autobuyerAmount(autobuyer.level))} · {autobuyer.enabled ? 'on' : 'off'}
+          </button>
+        ) : null}
       </div>
 
       <button
@@ -119,6 +137,7 @@ export function BuildingsPanel({
   amount,
   onAmountChange,
   onBuy,
+  onToggleAuto,
 }: BuildingsPanelProps): ReactElement {
   const visibleTiers = TIERS.filter((tier) => isTierVisible(state, tier));
   const lockedTier = TIERS.find((tier) => !isTierVisible(state, tier));
@@ -151,7 +170,15 @@ export function BuildingsPanel({
 
       <ul className="space-y-2.5">
         {visibleTiers.map((tier) => (
-          <BuildingCard key={tier} tier={tier} state={state} derived={derived} amount={amount} onBuy={onBuy} />
+          <BuildingCard
+            key={tier}
+            tier={tier}
+            state={state}
+            derived={derived}
+            amount={amount}
+            onBuy={onBuy}
+            onToggleAuto={onToggleAuto}
+          />
         ))}
         {lockedTier !== undefined && lockedBelow ? (
           <li className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-center text-xs text-slate-500">

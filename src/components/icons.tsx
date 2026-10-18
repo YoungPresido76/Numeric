@@ -2,6 +2,8 @@ import { CircleDot, GitFork, Network, ToggleRight, type LucideIcon } from 'lucid
 import type { Tier } from '../game/types';
 
 export {
+  Bot,
+  Coins,
   Eye,
   FlaskConical,
   Layers,
@@ -13,6 +15,9 @@ export {
   TriangleAlert,
   Zap,
 } from 'lucide-react';
+
+/** The type of a lucide icon component. */
+export type IconComponent = LucideIcon;
 
 /** One icon per project, chosen for what the project does: a two-state orb, a switch, a mesh, forking paths. */
 export const TIER_ICONS: Readonly<Record<Tier, LucideIcon>> = {

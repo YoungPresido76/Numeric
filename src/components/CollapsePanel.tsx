@@ -17,20 +17,23 @@ import {
 import { zoneOf } from '../game/lab';
 import { clamp, formatNumber } from '../game/math';
 import { useConfirm } from '../hooks/useConfirm';
-import type { GameState } from '../game/types';
+import type { GameState, Tier } from '../game/types';
+import { AutobuyerSection } from './AutobuyerSection';
 import { zoneWord } from './Charts';
 import { Galaxy } from './Galaxy';
 
 interface CollapsePanelProps {
   state: GameState;
   onCollapse: () => void;
+  onAutoBuy: (tier: Tier) => void;
+  onAutoToggle: (tier: Tier) => void;
 }
 
 function percent(fraction: number): string {
   return `${Math.round(fraction * 1000) / 10}%`;
 }
 
-export function CollapsePanel({ state, onCollapse }: CollapsePanelProps): ReactElement {
+export function CollapsePanel({ state, onCollapse, onAutoBuy, onAutoToggle }: CollapsePanelProps): ReactElement {
   const confirm = useConfirm();
   const payout = echoPayout(state);
   const ready = payout.base >= 1;
@@ -39,9 +42,9 @@ export function CollapsePanel({ state, onCollapse }: CollapsePanelProps): ReactE
   const previousAt = amplitudeForEchoes(payout.base);
   const progress = clamp((state.runAmplitude - previousAt) / (nextAt - previousAt), 0, 1);
 
-  const afterEchoes = state.echoes + payout.published;
-  const currentMult = echoMultFor(state.echoes);
-  const currentDiscount = costDiscountFor(state.echoes);
+  const afterEchoes = state.echoesEarned + payout.published;
+  const currentMult = echoMultFor(state.echoesEarned);
+  const currentDiscount = costDiscountFor(state.echoesEarned);
   const closest = zoneOf(state.lab.minStability);
   const risky = payout.mult > 1.001;
 
@@ -70,8 +73,8 @@ export function CollapsePanel({ state, onCollapse }: CollapsePanelProps): ReactE
             </div>
           </dl>
           <p className="mt-3 text-[11px] leading-snug text-slate-300">
-            Each Echo adds {percent(ECHO_BONUS_EACH)} production and {percent(ECHO_DISCOUNT_EACH)} off project costs
-            (up to {percent(ECHO_DISCOUNT_CAP)}).
+            Each Echo earned adds {percent(ECHO_BONUS_EACH)} production and {percent(ECHO_DISCOUNT_EACH)} off project
+            costs (up to {percent(ECHO_DISCOUNT_CAP)}). Spending Echoes on autobuyers keeps these bonuses.
           </p>
         </div>
       </section>
@@ -133,12 +136,12 @@ export function CollapsePanel({ state, onCollapse }: CollapsePanelProps): ReactE
 
       <section className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs leading-relaxed text-slate-400">
         <p>
-          <span className="font-semibold text-slate-200">Resets:</span> amplitude, projects, upgrades, Surge,
-          experiments and stability.
+          <span className="font-semibold text-slate-200">Resets:</span> amplitude, projects, upgrades, research,
+          Surge, experiments and stability.
         </p>
         <p className="mt-1">
-          <span className="font-semibold text-slate-200">Keeps:</span> Echoes, statistics, settings, and any research
-          carried forward.
+          <span className="font-semibold text-slate-200">Keeps:</span> Echoes, autobuyers, statistics, settings, and
+          any perks carried forward.
         </p>
         <p className="mt-1">
           <span className="font-semibold text-slate-200">If stability runs out,</span> the lab falls into a black hole
@@ -151,6 +154,8 @@ export function CollapsePanel({ state, onCollapse }: CollapsePanelProps): ReactE
           </p>
         ) : null}
       </section>
+
+      <AutobuyerSection state={state} onBuy={onAutoBuy} onToggle={onAutoToggle} />
     </div>
   );
 }
