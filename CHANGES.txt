@@ -1,29 +1,18 @@
-# Numeric 0.5.0 - files changed since 0.4.0 (with the 0.4.1 balance pass)
+# Numeric 0.6.0 - files changed since 0.5.0
 
-Adds Phase 6: Fabric (4D) - Weave, Threads and the five Thread upgrades.
+Adds Phase 7: Continuum Tear (A15).
 
-NEW (4):
-  src/game/fabric.ts          Fabric state, unlock, Thread maths, Cost Decoherence, Ancestral Legacy, timers
-  src/game/fabricOps.ts       Weave, Temporal Wormhole, Dilated Time, Thread upgrades, observing waveforms
-  src/components/FabricPanel.tsx
-  src/components/WaveformBar.tsx
+NEW (1):
+  src/components/TearAlert.tsx
 
-CHANGED:
-  package.json (0.5.0), README.md, CHANGES.txt
-  src/game/types.ts, data.ts, engine.ts, lab.ts, narrative.ts, reducer.ts, save.ts,
-  src/game/autorun.ts, sim.ts
+CHANGED (15):
+  package.json (0.6.0), README.md, CHANGES.txt
+  src/game/types.ts, data.ts, fabric.ts, fabricOps.ts, lab.ts, engine.ts, narrative.ts, reducer.ts, save.ts
   src/hooks/useGame.tsx
   src/App.tsx
-  src/components/BuildingsPanel.tsx, CollapsePanel.tsx, Orb.tsx, Stage.tsx,
-  src/components/SummaryModal.tsx, TabBar.tsx, icons.tsx
+  src/components/FabricPanel.tsx
 
 Notes:
-  - buildingCost / maxAffordable now take the tier's cost growth (Cost Decoherence).
-  - Fixed: buying a project used the spendable Echo balance and ignored research cost cuts,
-    while the shown price used Echoes earned plus research. Both now use the shown price.
-  - Saves from 0.4.x load unchanged (fabric defaults to empty; summaries default to 0 Threads).
-
-Earlier balance pass (0.4.1):
-  - flat upgrade costs x10, then x2 per position down the list
-  - neutralize costs 50% of current psi
-  - research sub-upgrade ranks cost x5 per Main stage already bought
+  - The 20 s last-chance window is the Tear once 15 Echoes are earned. Stitching costs 2 theta + 1 per layer.
+  - Saves from 0.5.x load unchanged (tears and shattered default to 0).
+  - Shards as a stitching currency arrive with the Multiverse (Phase 8).
