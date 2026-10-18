@@ -26,6 +26,7 @@ export interface GameActions {
   observe: (target: ObserveTarget) => void;
   neutralize: (id: number) => void;
   dismissSummary: () => void;
+  finishIntro: () => void;
   setSound: (value: boolean) => void;
   skipTutorial: () => void;
   saveNow: () => void;
@@ -79,6 +80,10 @@ function createActions(store: GameStore): GameActions {
     },
     dismissSummary: () => {
       store.dispatch({ type: 'dismissSummary' });
+      store.save();
+    },
+    finishIntro: () => {
+      store.dispatch({ type: 'finishIntro' });
       store.save();
     },
     setSound: (value) => {
