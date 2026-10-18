@@ -1,41 +1,29 @@
-# Numeric 0.4.0 - files changed since 0.3.0
+# Numeric 0.5.0 - files changed since 0.4.0 (with the 0.4.1 balance pass)
 
-Adds Phase 5: research trees (A10) and autobuyers (A11).
+Adds Phase 6: Fabric (4D) - Weave, Threads and the five Thread upgrades.
 
-NEW (5):
-  src/components/AutobuyerSection.tsx
-  src/components/ResearchPanel.tsx
-  src/game/autobuyers.ts
-  src/game/autorun.ts
-  src/game/research.ts
+NEW (4):
+  src/game/fabric.ts          Fabric state, unlock, Thread maths, Cost Decoherence, Ancestral Legacy, timers
+  src/game/fabricOps.ts       Weave, Temporal Wormhole, Dilated Time, Thread upgrades, observing waveforms
+  src/components/FabricPanel.tsx
+  src/components/WaveformBar.tsx
 
-CHANGED (17):
-  CHANGES.txt
-  README.md
-  package.json
-  src/App.tsx
-  src/components/BuildingsPanel.tsx
-  src/components/CollapsePanel.tsx
-  src/components/UpgradesPanel.tsx
-  src/components/icons.tsx
-  src/game/data.ts
-  src/game/engine.ts
-  src/game/lab.ts
-  src/game/narrative.ts
-  src/game/reducer.ts
-  src/game/save.ts
-  src/game/sim.ts
-  src/game/types.ts
+CHANGED:
+  package.json (0.5.0), README.md, CHANGES.txt
+  src/game/types.ts, data.ts, engine.ts, lab.ts, narrative.ts, reducer.ts, save.ts,
+  src/game/autorun.ts, sim.ts
   src/hooks/useGame.tsx
+  src/App.tsx
+  src/components/BuildingsPanel.tsx, CollapsePanel.tsx, Orb.tsx, Stage.tsx,
+  src/components/SummaryModal.tsx, TabBar.tsx, icons.tsx
 
-Saves from 0.3.0 load unchanged (new fields default safely).
-Unzip over the project root (on top of 0.3.0), then: npm install && npm run build
+Notes:
+  - buildingCost / maxAffordable now take the tier's cost growth (Cost Decoherence).
+  - Fixed: buying a project used the spendable Echo balance and ignored research cost cuts,
+    while the shown price used Echoes earned plus research. Both now use the shown price.
+  - Saves from 0.4.x load unchanged (fabric defaults to empty; summaries default to 0 Threads).
 
-Balance pass (0.4.1):
-  src/game/data.ts  - flat upgrade costs x10, then x2 per position down the list
-                      (research keeps its x5 Main stage multiplier, unchanged)
-                      neutralize cost is 50% of current psi
-                      research sub-upgrade cost also x5 per Main stage already bought
-  src/game/lab.ts   - neutralizeCost applies the cap
-  src/game/research.ts - subCost takes the Main rank
-  README.md         - neutralize note
+Earlier balance pass (0.4.1):
+  - flat upgrade costs x10, then x2 per position down the list
+  - neutralize costs 50% of current psi
+  - research sub-upgrade ranks cost x5 per Main stage already bought

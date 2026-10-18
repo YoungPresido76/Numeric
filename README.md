@@ -37,6 +37,13 @@ Framing: ψ is a research budget, buildings are research projects, taps are obse
 - **Black hole.** After 20 s at zero stability the lab collapses and pays 0.5x Echoes.
 - **Collapse** publishes the lab for Echoes (ε): +10% production and 0.5% off costs each (max 30%). Echoes = floor(sqrt(run ψ / 2e11)) x a risk multiplier (1.0 up to 1.5x for surviving risky experiments).
 - **Legacy.** Banked Echoes give a capped starting ψ grant in the next lab, and the riskiest experiment you survived makes that project tier visible one tier earlier.
+- **Fabric (4D)** opens after 15 Echoes earned in total and adds a Fabric tab. **Weave** closes the lab like a Collapse but pays Threads (θ) instead of Echoes: floor(sqrt(run ψ / 2.5e12) x the same risk multiplier). Threads, Thread upgrades and the Weave count persist through Collapse and Weave. Five Thread upgrades:
+  - **Cost Decoherence** (permanent, up to 3 per project): takes 0.04 / 0.06 / 0.07 / 0.08 off Qubit / Gate / Lattice / Branch cost growth each (Qubit 1.22 to 1.18). Costs 1 / 2 / 3 / 4 θ, doubling each purchase.
+  - **Temporal Wormhole** (3 θ, once per lab, needs 2 minutes of lab history): pick a point in the lab's history and be paid, once, 0.5 x (time since the point / run so far), capped at 25%, of the ψ produced since that point.
+  - **Dilated Time** (2 θ): 60 s of +40% Qubit output. Stability drains at 2x for the window, and the window counts as one open failure, so it always costs stability.
+  - **Superposition Tapping** (6 θ, once): taps add Unresolved Waveforms instead of paying. Observe (under the orb) collapses them into one burst of 0.5x to 4x tap gain each, tilted toward big bursts by the recent tap rate. Observing while Strained / Critical / Collapse imminent risks a setback (25 / 50 / 75%) that loses the waveforms and 5 stability.
+  - **Ancestral Legacy** (10 θ, once): Echo Memory adds 10% of your best lab's Echoes to every Collapse. On a Weave, if the last two finished labs were one that stayed Stable throughout and one that survived Critical, they form a Symmetric Pair: +5% production for good (up to 10 pairs).
+- **Next plane.** Fully ranking all three research trees in one lab and gathering Threads across two Weaves are tracked in the Fabric tab. The Multiverse itself is not built yet.
 - **Offline progress** runs up to 8 hours at 50% efficiency (80% with Persistent State). Experiments pause while away.
 - **Save, export and import** are in the System tab (`NUMERIC1:` code). Version 1 saves migrate automatically.
 
