@@ -1,0 +1,46 @@
+# Numeric 0.2.0 - changed files only
+
+NEW (12):
+  src/components/Charts.tsx
+  src/components/ExperimentDock.tsx
+  src/components/FlowTrail.tsx
+  src/components/Galaxy.tsx
+  src/components/LabPanel.tsx
+  src/components/NotebookStrip.tsx
+  src/components/SummaryModal.tsx
+  src/components/ZoneBanner.tsx
+  src/components/ZoneOverlay.tsx
+  src/game/lab.ts
+  src/game/narrative.ts
+  src/game/sim.ts
+
+CHANGED (24):
+  README.md
+  package.json
+  src/App.tsx
+  src/components/BuildingsPanel.tsx
+  src/components/CollapsePanel.tsx
+  src/components/EquationTicker.tsx
+  src/components/OfflineModal.tsx
+  src/components/Orb.tsx
+  src/components/Stage.tsx
+  src/components/SurgeButton.tsx
+  src/components/SystemPanel.tsx
+  src/components/TabBar.tsx
+  src/components/WaveBackground.tsx
+  src/components/icons.tsx
+  src/game/audio.ts
+  src/game/data.ts
+  src/game/engine.ts
+  src/game/reducer.ts
+  src/game/save.ts
+  src/game/store.ts
+  src/game/tutorial.ts
+  src/game/types.ts
+  src/hooks/useGame.tsx
+  src/index.css
+
+REMOVED (0):
+  none
+
+Unzip over the project root, then: npm install && npm run build
