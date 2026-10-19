@@ -31,6 +31,7 @@ function Report({ summary, onClose }: ReportProps): ReactElement {
   const button = useRef<HTMLButtonElement>(null);
   const blackHole = summary.outcome === 'blackHole';
   const woven = summary.outcome === 'woven';
+  const converged = summary.outcome === 'converged';
 
   useEffect(() => {
     button.current?.focus();
@@ -40,14 +41,16 @@ function Report({ summary, onClose }: ReportProps): ReactElement {
     <div className="fade-in relative z-10 mx-auto max-h-full w-full max-w-sm overflow-y-auto rounded-3xl border border-white/15 bg-black/55 p-5 text-center shadow-2xl backdrop-blur-md">
       <p className="font-numeric text-[11px] tracking-[0.3em] text-slate-400 uppercase">Lab {summary.lab}</p>
       <h2 id="summary-title" className="mt-1.5 font-display text-2xl italic text-white">
-        {blackHole ? 'The lab fell into a black hole' : woven ? 'Lab woven' : 'Lab published'}
+        {blackHole ? 'The lab fell into a black hole' : converged ? 'Fabric converged' : woven ? 'Lab woven' : 'Lab published'}
       </h2>
       <p className="mt-1 text-xs text-slate-400">
         {blackHole
           ? 'Its last-chance window ran out. Half the Echoes survive.'
-          : woven
-            ? 'Your research was drawn into the Fabric as Threads. No Echoes this time.'
-            : 'Your research is published. The next team inherits it.'}
+          : converged
+            ? 'The Fabric folded into Shards. Threads and everything bought with them are gone.'
+            : woven
+              ? 'Your research was drawn into the Fabric as Threads. No Echoes this time.'
+              : 'Your research is published. The next team inherits it.'}
       </p>
 
       <dl className="mt-4 grid grid-cols-2 gap-2">
@@ -58,8 +61,13 @@ function Report({ summary, onClose }: ReportProps): ReactElement {
       </dl>
 
       <div className="mt-4 rounded-2xl bg-white/[0.06] p-3 text-left">
-        <p className="text-[11px] tracking-wide text-slate-400 uppercase">{woven ? 'Threads' : 'Echoes'}</p>
-        {woven ? (
+        <p className="text-[11px] tracking-wide text-slate-400 uppercase">{converged ? 'Shards' : woven ? 'Threads' : 'Echoes'}</p>
+        {converged ? (
+          <p className="mt-1 font-display text-3xl text-violet-200 tabular-nums">
+            +{formatNumber(summary.shardsEarned)}
+            <span className="ml-1 text-xl italic">◇</span>
+          </p>
+        ) : woven ? (
           <p className="mt-1 font-display text-3xl text-teal-200 tabular-nums">
             +{formatNumber(summary.threadsEarned)}
             <span className="ml-1 text-xl italic">θ</span>
@@ -71,9 +79,11 @@ function Report({ summary, onClose }: ReportProps): ReactElement {
           </p>
         )}
         <p className="mt-1 font-numeric text-[11px] leading-snug text-slate-400">
-          {woven
-            ? `Risk ×${summary.riskMult.toFixed(2)} applied to the Threads.`
-            : `${formatNumber(summary.baseEchoes)} base × ${summary.riskMult.toFixed(2)} risk${blackHole ? ' × 0.5 black hole' : ''}.`}{' '}
+          {converged
+            ? 'Paid from the Threads drawn since the last Converge.'
+            : woven
+              ? `Risk ×${summary.riskMult.toFixed(2)} applied to the Threads.`
+              : `${formatNumber(summary.baseEchoes)} base × ${summary.riskMult.toFixed(2)} risk${blackHole ? ' × 0.5 black hole' : ''}.`}{' '}
           Closest call: {zoneWord(summary.closestZone).toLowerCase()}.
         </p>
       </div>

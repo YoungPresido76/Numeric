@@ -142,7 +142,7 @@ export function CollapsePanel({ state, onCollapse, onAutoBuy, onAutoToggle }: Co
         </p>
         <p className="mt-1">
           <span className="font-semibold text-slate-200">Keeps:</span> Echoes, autobuyers, Threads and Thread upgrades,
-          statistics, settings, and any perks carried forward.
+          Shards, statistics, settings, and any perks carried forward.
         </p>
         <p className="mt-1">
           <span className="font-semibold text-slate-200">If stability runs out,</span> the lab falls into a black hole

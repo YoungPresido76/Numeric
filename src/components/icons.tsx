@@ -2,11 +2,13 @@ import { CircleDot, GitFork, Network, ToggleRight, type LucideIcon } from 'lucid
 import type { Tier } from '../game/types';
 
 export {
+  Atom,
   AudioWaveform,
   Bot,
   Coins,
   Eye,
   FlaskConical,
+  Gem,
   History,
   Hourglass,
   Layers,

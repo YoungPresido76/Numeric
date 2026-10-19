@@ -12,6 +12,8 @@ interface TabBarProps {
   badges: Readonly<Partial<Record<TabId, boolean>>>;
   /** The Fabric tab appears once Fabric is unlocked. */
   showFabric: boolean;
+  /** Once the Multiverse is open the Fabric tab becomes Planes. */
+  showPlanes: boolean;
 }
 
 interface TabDef {
@@ -28,7 +30,7 @@ const TABS: readonly TabDef[] = [
   { id: 'fabric', label: 'Fabric', Icon: Waypoints },
 ];
 
-export function TabBar({ active, onSelect, hintTab, badges, showFabric }: TabBarProps): ReactElement {
+export function TabBar({ active, onSelect, hintTab, badges, showFabric, showPlanes }: TabBarProps): ReactElement {
   const tabs = showFabric ? TABS : TABS.filter((tab) => tab.id !== 'fabric');
   return (
     <nav
@@ -65,7 +67,7 @@ export function TabBar({ active, onSelect, hintTab, badges, showFabric }: TabBar
                 />
               ) : null}
             </span>
-            {label}
+            {id === 'fabric' && showPlanes ? 'Planes' : label}
           </button>
         );
       })}
