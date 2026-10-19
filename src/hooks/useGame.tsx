@@ -13,6 +13,7 @@ import { zoneOf, zoneRank } from '../game/lab';
 import type { ImportResult } from '../game/save';
 import { GameStore, type Snapshot } from '../game/store';
 import type {
+  AutoStitchMode,
   BuyAmount,
   ObserveTarget,
   ResearchNode,
@@ -21,6 +22,7 @@ import type {
   Tier,
   TreeId,
   UpgradeId,
+  VarianceId,
 } from '../game/types';
 
 const TICK_MS = 100;
@@ -41,6 +43,9 @@ export interface GameActions {
   dilate: () => void;
   stitch: (currency: StitchCurrency) => void;
   converge: () => void;
+  enterVariance: (id: VarianceId) => void;
+  leaveVariance: () => void;
+  setAutoStitch: (mode: AutoStitchMode) => void;
   buyThreadUpgrade: (id: ThreadUpgradeId) => void;
   resolveWaveforms: () => void;
   observe: (target: ObserveTarget) => void;
@@ -143,6 +148,23 @@ function createActions(store: GameStore): GameActions {
       sound.unlock();
       if (store.dispatch({ type: 'converge' })) {
         sound.play('collapse');
+        store.save();
+      }
+    },
+    enterVariance: (id) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'enterVariance', id })) {
+        sound.play('upgrade');
+        store.save();
+      }
+    },
+    leaveVariance: () => {
+      if (store.dispatch({ type: 'leaveVariance' })) store.save();
+    },
+    setAutoStitch: (mode) => {
+      sound.unlock();
+      if (store.dispatch({ type: 'autoStitch', mode })) {
+        sound.play('buy');
         store.save();
       }
     },
