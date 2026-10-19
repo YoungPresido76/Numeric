@@ -5,6 +5,7 @@ import { ExperimentDock } from './ExperimentDock';
 import { NoticeBar } from './NoticeBar';
 import { TearAlert } from './TearAlert';
 import { TutorialCard } from './TutorialCard';
+import { VarianceBanner } from './VarianceBanner';
 import { ZoneBanner } from './ZoneBanner';
 
 interface AlertStackProps {
@@ -30,6 +31,7 @@ export function AlertStack({ snapshot, actions }: AlertStackProps): ReactElement
       <NoticeBar notice={snapshot.notice} saveStatus={snapshot.saveStatus} onDismiss={actions.dismissNotice} />
       <TearAlert state={state} onStitch={actions.stitch} />
       <ZoneBanner zone={snapshot.derived.zone} lab={state.lab} />
+      <VarianceBanner multiverse={state.multiverse} />
       <TutorialCard state={state} onSkip={actions.skipTutorial} />
       <ExperimentDock state={state} onObserve={actions.observe} onNeutralize={actions.neutralize} />
     </div>

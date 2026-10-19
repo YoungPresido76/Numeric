@@ -3,10 +3,19 @@ import { MULTIVERSE_UNLOCK_WEAVES, TEAR_SHARD_COST } from '../game/data';
 import { canConverge, convergePreview } from '../game/multiverse';
 import { clamp, formatNumber } from '../game/math';
 import { useConfirm } from '../hooks/useConfirm';
-import type { GameState } from '../game/types';
+import type { AutoStitchMode, GameState, VarianceId } from '../game/types';
+import { ChamberCard } from './ChamberCard';
 import { Atom, Gem } from './icons';
 
 interface MultiversePanelProps {
+  state: GameState;
+  onConverge: () => void;
+  onEnterVariance: (id: VarianceId) => void;
+  onLeaveVariance: () => void;
+  onAutoStitch: (mode: AutoStitchMode) => void;
+}
+
+interface ConvergeProps {
   state: GameState;
   onConverge: () => void;
 }
@@ -56,13 +65,13 @@ function ShardBalance({ state }: { state: GameState }): ReactElement {
       </p>
       <p className="mt-2 text-xs leading-snug text-slate-300">
         Shards are the top currency. For now they stitch a Continuum Tear for {TEAR_SHARD_COST} Shard when Threads run
-        short.
+        short, and clearing a Variance pays more.
       </p>
     </section>
   );
 }
 
-function ConvergeCard({ state, onConverge }: MultiversePanelProps): ReactElement {
+function ConvergeCard({ state, onConverge }: ConvergeProps): ReactElement {
   const confirm = useConfirm();
   const preview = convergePreview(state);
   const ready = canConverge(state);
@@ -124,7 +133,13 @@ function ConvergeCard({ state, onConverge }: MultiversePanelProps): ReactElement
 }
 
 /** Multiverse (5D). Converging the Fabric pays Shards. */
-export function MultiversePanel({ state, onConverge }: MultiversePanelProps): ReactElement {
+export function MultiversePanel({
+  state,
+  onConverge,
+  onEnterVariance,
+  onLeaveVariance,
+  onAutoStitch,
+}: MultiversePanelProps): ReactElement {
   return (
     <div className="fade-in space-y-3">
       <div className="flex items-baseline justify-between">
@@ -133,6 +148,7 @@ export function MultiversePanel({ state, onConverge }: MultiversePanelProps): Re
       </div>
       <ShardBalance state={state} />
       <ConvergeCard state={state} onConverge={onConverge} />
+      <ChamberCard state={state} onEnter={onEnterVariance} onLeave={onLeaveVariance} onAutoStitch={onAutoStitch} />
     </div>
   );
 }

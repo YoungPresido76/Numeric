@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react';
 import { multiverseUnlocked } from '../game/multiverse';
-import type { GameState, ThreadUpgradeId, Tier } from '../game/types';
+import type { AutoStitchMode, GameState, ThreadUpgradeId, Tier, VarianceId } from '../game/types';
 import { FabricPanel } from './FabricPanel';
 import { MultiverseLocked, MultiversePanel } from './MultiversePanel';
 
@@ -12,6 +12,9 @@ interface PlanesPanelProps {
   onDilate: () => void;
   onThreadUpgrade: (id: ThreadUpgradeId) => void;
   onConverge: () => void;
+  onEnterVariance: (id: VarianceId) => void;
+  onLeaveVariance: () => void;
+  onAutoStitch: (mode: AutoStitchMode) => void;
 }
 
 type Plane = 'fabric' | 'multiverse';
@@ -63,7 +66,13 @@ export function PlanesPanel(props: PlanesPanelProps): ReactElement {
           onThreadUpgrade={props.onThreadUpgrade}
         />
       ) : (
-        <MultiversePanel state={state} onConverge={props.onConverge} />
+        <MultiversePanel
+          state={state}
+          onConverge={props.onConverge}
+          onEnterVariance={props.onEnterVariance}
+          onLeaveVariance={props.onLeaveVariance}
+          onAutoStitch={props.onAutoStitch}
+        />
       )}
     </div>
   );

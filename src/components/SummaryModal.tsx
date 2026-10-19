@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { PROJECT_NAMES } from '../game/data';
 import { formatDuration, formatNumber } from '../game/math';
 import type { RunSummary } from '../game/types';
+import { VARIANCE_BY_ID } from '../game/variance';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { ProductionChart, TierShare, zoneWord } from './Charts';
 import { Galaxy } from './Galaxy';
@@ -99,6 +100,12 @@ function Report({ summary, onClose }: ReportProps): ReactElement {
       </div>
 
       <ul className="mt-3 space-y-1 text-left text-xs leading-snug text-slate-300">
+        {summary.varianceCleared !== null ? (
+          <li>
+            {VARIANCE_BY_ID[summary.varianceCleared].name} cleared: +{formatNumber(VARIANCE_BY_ID[summary.varianceCleared].rewardShards)} ◇.{' '}
+            {VARIANCE_BY_ID[summary.varianceCleared].unlocks}
+          </li>
+        ) : null}
         {summary.legacyGrant > 0 ? (
           <li>Legacy grant for the next lab: {formatNumber(summary.legacyGrant)} ψ.</li>
         ) : null}
