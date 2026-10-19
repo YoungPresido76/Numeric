@@ -16,6 +16,7 @@ import type {
   BuyAmount,
   ObserveTarget,
   ResearchNode,
+  StitchCurrency,
   ThreadUpgradeId,
   Tier,
   TreeId,
@@ -38,7 +39,8 @@ export interface GameActions {
   buyDecoherence: (tier: Tier) => void;
   installWormhole: (at: number) => void;
   dilate: () => void;
-  stitch: () => void;
+  stitch: (currency: StitchCurrency) => void;
+  converge: () => void;
   buyThreadUpgrade: (id: ThreadUpgradeId) => void;
   resolveWaveforms: () => void;
   observe: (target: ObserveTarget) => void;
@@ -130,10 +132,17 @@ function createActions(store: GameStore): GameActions {
         store.save();
       }
     },
-    stitch: () => {
+    stitch: (currency) => {
       sound.unlock();
-      if (store.dispatch({ type: 'stitch' })) {
+      if (store.dispatch({ type: 'stitch', currency })) {
         sound.play('success');
+        store.save();
+      }
+    },
+    converge: () => {
+      sound.unlock();
+      if (store.dispatch({ type: 'converge' })) {
+        sound.play('collapse');
         store.save();
       }
     },
