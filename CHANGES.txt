@@ -1,18 +1,25 @@
-# Numeric 0.6.0 - files changed since 0.5.0
+# Numeric 0.7.0 - files changed since 0.6.0
 
-Adds Phase 7: Continuum Tear (A15).
+Adds Phase 8a: Multiverse foundation (A14, part 1 of 5): Converge and Shards.
 
-NEW (1):
-  src/components/TearAlert.tsx
+NEW (4):
+  src/game/multiverse.ts, src/game/multiverseOps.ts
+  src/components/MultiversePanel.tsx, src/components/PlanesPanel.tsx
 
-CHANGED (15):
-  package.json (0.6.0), README.md, CHANGES.txt
-  src/game/types.ts, data.ts, fabric.ts, fabricOps.ts, lab.ts, engine.ts, narrative.ts, reducer.ts, save.ts
+CHANGED (16, plus this file):
+  package.json (0.7.0), README.md
+  src/game/types.ts, data.ts, engine.ts, fabricOps.ts, narrative.ts, reducer.ts, save.ts
   src/hooks/useGame.tsx
   src/App.tsx
-  src/components/FabricPanel.tsx
+  src/components/TabBar.tsx, TearAlert.tsx, SummaryModal.tsx, CollapsePanel.tsx, icons.tsx
 
 Notes:
-  - The 20 s last-chance window is the Tear once 15 Echoes are earned. Stitching costs 2 theta + 1 per layer.
-  - Saves from 0.5.x load unchanged (tears and shattered default to 0).
-  - Shards as a stitching currency arrive with the Multiverse (Phase 8).
+  - The Multiverse opens after 2 Weaves and stays open (a Converge wipes the Weave count, so having converged once is enough).
+  - Converge wipes the whole Fabric and pays floor(sqrt(Threads drawn since the last Converge / 20)) Shards. It pays no Echoes.
+  - A Tear can be stitched with 1 Shard once the Multiverse is open.
+  - The Fabric tab is relabelled Planes once the Multiverse opens, and holds a Fabric / Multiverse switch.
+  - Saves from 0.6.x load unchanged (multiverse defaults to empty; the unlock follows from the Weave count).
+  - Needs the lucide-react icons Atom and Gem (both in 0.469).
+  - Built on your refined HUD (AlertStack, InfoFab, NewsTicker, new Stage/Orb/ExperimentDock/NoticeBar). None of those files are touched.
+    Only App.tsx and TabBar.tsx overlap with your edits; both were merged by hand and keep your layout (ticker, AlertStack, InfoFab, no System tab).
+  - The Tear alert you moved into AlertStack picks up the new Shard stitch button automatically.
