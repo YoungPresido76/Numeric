@@ -30,6 +30,7 @@ import type {
   LabOutcome,
   LabPeak,
   LabState,
+  MultiverseState,
   NoteLine,
   NoteTone,
   ProjectTier,
@@ -60,7 +61,7 @@ const CORRUPT_BACKUP_KEY = `${SAVE_KEY}.corrupt`;
 /** Saves from the first prototype (no lab) are upgraded on load. */
 const READABLE_VERSIONS: readonly unknown[] = [1, 2];
 const NOTE_TONES: readonly NoteTone[] = ['info', 'good', 'warn', 'alert'];
-const OUTCOMES: readonly LabOutcome[] = ['published', 'blackHole', 'woven'];
+const OUTCOMES: readonly LabOutcome[] = ['published', 'blackHole', 'woven', 'converged'];
 const PEAKS: readonly LabPeak[] = ['stable', 'strained', 'survived', 'collapsed'];
 const MAX_TEXT = 400;
 const MAX_LIST = 12;
@@ -286,6 +287,7 @@ function readSummary(value: unknown): RunSummary | null {
     riskMult: clamp(readNumber(value['riskMult'], 1, 1), 1, 5),
     echoesEarned: readCount(value['echoesEarned']),
     threadsEarned: readCount(value['threadsEarned']),
+    shardsEarned: readCount(value['shardsEarned']),
     tapped: readNumber(value['tapped'], 0),
     byTier: readQuad(value['byTier'], false),
     history: readSamples(value['history'], HISTORY_MAX_SAMPLES),
@@ -356,6 +358,17 @@ function readFabric(value: unknown): FabricState {
   };
 }
 
+function readMultiverse(value: unknown): MultiverseState {
+  const src = isRecord(value) ? value : {};
+  const shardsEarned = readCount(src['shardsEarned']);
+  return {
+    // Spendable Shards can never exceed what was ever earned.
+    shards: Math.min(readCount(src['shards']), shardsEarned),
+    shardsEarned,
+    converges: readCount(src['converges']),
+  };
+}
+
 function readAutobuyer(value: unknown): AutobuyerState {
   const src = isRecord(value) ? value : {};
   if (src['owned'] !== true) return createAutobuyer();
@@ -421,6 +434,7 @@ export function parseSave(raw: unknown, now: number): GameState | null {
     research,
     treesCleared,
     fabric: readFabric(raw['fabric']),
+    multiverse: readMultiverse(raw['multiverse']),
     autobuyers: readAutobuyers(raw['autobuyers']),
     autoClock: Math.min(readNumber(raw['autoClock'], 0), 1),
     perks: readPerks(raw['perks']),

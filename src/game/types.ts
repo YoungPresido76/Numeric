@@ -78,7 +78,10 @@ export type Zone = 'stable' | 'strained' | 'critical' | 'imminent';
 
 export type NoteTone = 'info' | 'good' | 'warn' | 'alert';
 
-export type LabOutcome = 'published' | 'blackHole' | 'woven';
+export type LabOutcome = 'published' | 'blackHole' | 'woven' | 'converged';
+
+/** What a Continuum Tear is stitched closed with. */
+export type StitchCurrency = 'threads' | 'shards';
 
 /**
  * How a finished lab ended, judged by its lowest point. Two labs that end as
@@ -121,6 +124,16 @@ export interface FabricState {
   tears: number;
   /** Shattered Reality Layers: one per stitched Tear, up to a cap. Each adds permanent production. */
   shattered: number;
+}
+
+/** Multiverse (5D): Shards and everything bought with them. Persists through every reset below it. */
+export interface MultiverseState {
+  /** Spendable Shards. */
+  shards: number;
+  /** Shards earned over all Converges. Gates the Super-String Canopy. */
+  shardsEarned: number;
+  /** Times the Fabric has been converged. */
+  converges: number;
 }
 
 export interface SurgeState {
@@ -283,6 +296,8 @@ export interface RunSummary {
   echoesEarned: number;
   /** Threads paid by a Weave. Zero for any other ending. */
   threadsEarned: number;
+  /** Shards paid by a Converge. Zero for any other ending. */
+  shardsEarned: number;
   tapped: number;
   byTier: Quad;
   history: HistorySample[];
@@ -312,6 +327,8 @@ export interface GameState {
   treesCleared: boolean;
   /** Threads and Thread upgrades. */
   fabric: FabricState;
+  /** Shards, from Converging the Fabric. */
+  multiverse: MultiverseState;
   /** One autobuyer per building tier. */
   autobuyers: AutobuyerSet;
   /** Seconds accumulated toward the next autobuyer trigger. */
@@ -417,7 +434,8 @@ export type GameAction =
   | { type: 'decoherence'; tier: Tier }
   | { type: 'wormhole'; at: number }
   | { type: 'dilate' }
-  | { type: 'stitch' }
+  | { type: 'stitch'; currency?: StitchCurrency }
+  | { type: 'converge' }
   | { type: 'threadUpgrade'; id: ThreadUpgradeId }
   | { type: 'resolve' }
   | { type: 'surge' }

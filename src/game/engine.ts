@@ -13,6 +13,7 @@ import {
   LEGACY_PER_ECHO,
   MAX_NOTES,
   MILESTONES,
+  MULTIVERSE_UNLOCK_WEAVES,
   OFFLINE_CAP_SECONDS,
   START_AMPLITUDE,
   SURGE_BASE_COOLDOWN,
@@ -33,6 +34,7 @@ import {
   tickFabric,
 } from './fabric';
 import { createHistory, createLab, addNotes, riskMultiplier, zoneOf } from './lab';
+import { createMultiverse, shardsFor } from './multiverse';
 import { clampFinite, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
 import { createResearch, researchBonuses } from './research';
@@ -67,6 +69,7 @@ export function createInitialState(now: number): GameState {
     research: createResearch(),
     treesCleared: false,
     fabric: createFabric(),
+    multiverse: createMultiverse(),
     autobuyers: createAutobuyers(),
     autoClock: 0,
     perks: [],
@@ -522,8 +525,10 @@ export function legacyGrantFor(echoes: number): number {
 export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   const payout = echoPayout(state);
   const woven = outcome === 'woven';
+  const converged = outcome === 'converged';
   const threads = woven ? threadsFor(state.runAmplitude, payout.mult) : 0;
-  const earned = woven ? 0 : outcome === 'blackHole' ? payout.blackHole : payout.published;
+  const shards = converged ? shardsFor(state.fabric.threadsEarned) : 0;
+  const earned = woven || converged ? 0 : outcome === 'blackHole' ? payout.blackHole : payout.published;
   const echoes = state.echoes + earned;
   const echoesEarned = state.echoesEarned + earned;
   const legacyGrant = legacyGrantFor(echoesEarned);
@@ -534,12 +539,20 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   const run = state.lab.run;
 
   // Echo Memory remembers what a published lab paid before memory was added.
-  const closing = closeFabric(state.fabric, {
-    outcome,
-    minStability: state.lab.minStability,
-    echoes: outcome === 'published' ? Math.round(payout.base * payout.mult) : 0,
-    threads,
-  });
+  // A Converge folds the whole Fabric into Shards, so nothing in it survives.
+  const closing = converged
+    ? { fabric: createFabric(), paired: false }
+    : closeFabric(state.fabric, {
+        outcome,
+        minStability: state.lab.minStability,
+        echoes: outcome === 'published' ? Math.round(payout.base * payout.mult) : 0,
+        threads,
+      });
+  const multiverse = {
+    shards: state.multiverse.shards + shards,
+    shardsEarned: state.multiverse.shardsEarned + shards,
+    converges: state.multiverse.converges + (converged ? 1 : 0),
+  };
 
   const summary: RunSummary = {
     outcome,
@@ -556,6 +569,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     riskMult: payout.mult,
     echoesEarned: earned,
     threadsEarned: threads,
+    shardsEarned: shards,
     tapped: run.tapped,
     byTier: [...run.byTier],
     history: state.history.samples.slice(),
@@ -566,12 +580,17 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
   const lines: Line[] = [
     outcome === 'blackHole'
       ? narrative.blackHole()
-      : woven
-        ? narrative.woven(closed, threads)
-        : narrative.published(closed, earned),
+      : converged
+        ? narrative.converged(closed, shards)
+        : woven
+          ? narrative.woven(closed, threads)
+          : narrative.published(closed, earned),
     narrative.labOpened(closed + 1, state.lab.nextId),
   ];
   if (closing.paired) lines.push(narrative.symmetricPair(closing.fabric.pairs));
+  if (state.fabric.weaves < MULTIVERSE_UNLOCK_WEAVES && closing.fabric.weaves >= MULTIVERSE_UNLOCK_WEAVES) {
+    lines.push(narrative.multiverseOpened());
+  }
   if (state.echoesEarned < FABRIC_UNLOCK_ECHOES && echoesEarned >= FABRIC_UNLOCK_ECHOES) {
     lines.push(narrative.fabricOpened());
   }
@@ -586,6 +605,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     echoesEarned,
     treesCleared: state.treesCleared,
     fabric: closing.fabric,
+    multiverse,
     autobuyers: state.autobuyers,
     perks,
     lab: createLab(state.lab.rng, state.lab.nextId),

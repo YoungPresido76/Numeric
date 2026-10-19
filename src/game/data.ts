@@ -204,6 +204,17 @@ export const TEAR_BASE_COST = 2;
 export const TEAR_LAYER_CAP = 25;
 export const TEAR_LAYER_BONUS = 0.02;
 export const TEAR_STITCH_STABILITY = 45;
+/** Once the Multiverse is open a Tear can be stitched with this many Shards instead of Threads. */
+export const TEAR_SHARD_COST = 1;
+
+/* ------------------------------------------------------------------ */
+/* Multiverse (5D)                                                     */
+/* ------------------------------------------------------------------ */
+
+/** The Multiverse opens after this many Weaves. */
+export const MULTIVERSE_UNLOCK_WEAVES = 2;
+/** Converge: Shards = floor(sqrt(Threads drawn since the last Converge / SHARD_DIVISOR)). */
+export const SHARD_DIVISOR = 20;
 
 /** Ancestral Legacy: Echo Memory adds this share of your best lab's Echoes to every Collapse. */
 export const ECHO_MEMORY_FRACTION = 0.1;

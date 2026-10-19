@@ -4,6 +4,7 @@ import {
   DILATION_SECONDS,
   TAPPING_COST,
   TEAR_LAYER_CAP,
+  TEAR_SHARD_COST,
   TEAR_STITCH_STABILITY,
   WAVE_EXP_FAST,
   WAVE_EXP_SLOW,
@@ -21,9 +22,10 @@ import {
 import { closeLab, derive } from './engine';
 import { amplitudeForThreads, fabricUnlocked, tearCost, tearOpen, threadsFor } from './fabric';
 import { addNote, draft, random, riskMultiplier, shiftStability, zoneOf } from './lab';
+import { multiverseUnlocked } from './multiverse';
 import { clamp, clampFinite, formatNumber } from './math';
 import { narrative } from './narrative';
-import type { GameState, History, ThreadUpgradeId } from './types';
+import type { GameState, History, StitchCurrency, ThreadUpgradeId } from './types';
 
 /* ------------------------------------------------------------------ */
 /* Weave                                                               */
@@ -147,26 +149,32 @@ export function activateDilation(state: GameState): GameState {
 /* Continuum Tear                                                      */
 /* ------------------------------------------------------------------ */
 
-export function canStitch(state: GameState): boolean {
-  return tearOpen(state) && state.fabric.threads >= tearCost(state.fabric);
+/** Shards stitch a Tear for a flat price, once the Multiverse is open. */
+export function canStitch(state: GameState, currency: StitchCurrency = 'threads'): boolean {
+  if (!tearOpen(state)) return false;
+  if (currency === 'shards') return multiverseUnlocked(state) && state.multiverse.shards >= TEAR_SHARD_COST;
+  return state.fabric.threads >= tearCost(state.fabric);
 }
 
 /**
- * Spends Threads to stitch an open Tear closed. The lab survives with stability
- * restored, the last-chance window ends, and a Shattered Reality Layer is added.
+ * Spends Threads, or Shards once the Multiverse is open, to stitch an open Tear
+ * closed. The lab survives with stability restored, the last-chance window ends,
+ * and a Shattered Reality Layer is added.
  */
-export function stitchTear(state: GameState): GameState {
-  if (!canStitch(state)) return state;
-  const cost = tearCost(state.fabric);
+export function stitchTear(state: GameState, currency: StitchCurrency = 'threads'): GameState {
+  if (!canStitch(state, currency)) return state;
   const s = draft(state);
   s.lab.grace = -1;
   s.lab.stability = Math.max(s.lab.stability, TEAR_STITCH_STABILITY);
   s.fabric = {
     ...s.fabric,
-    threads: s.fabric.threads - cost,
+    threads: currency === 'threads' ? s.fabric.threads - tearCost(state.fabric) : s.fabric.threads,
     tears: s.fabric.tears + 1,
     shattered: Math.min(TEAR_LAYER_CAP, s.fabric.shattered + 1),
   };
+  if (currency === 'shards') {
+    s.multiverse = { ...s.multiverse, shards: s.multiverse.shards - TEAR_SHARD_COST };
+  }
   addNote(s, narrative.tearStitched(s.fabric.shattered));
   return s;
 }

@@ -302,6 +302,24 @@ export const narrative = {
     );
   },
 
+  /** The Multiverse opened: two Weaves are on the record. */
+  multiverseOpened(): Line {
+    return line(
+      'Two weaves on the record, and the Fabric has started to fold back on itself. Somewhere past it, other labs are running. We could converge. - Vey',
+      'good',
+      'LAB-NOTE',
+    );
+  },
+
+  /** The Fabric was converged into Shards. */
+  converged(lab: number, shards: number): Line {
+    return line(
+      `Lab ${lab} converged. The whole Fabric folded into ${shards} ${shards === 1 ? 'Shard' : 'Shards'}. Everything we threaded is gone, and so is the weight of it. - Vey`,
+      'info',
+      'LOG',
+    );
+  },
+
   /** Two labs with opposite histories lined up on a Weave. */
   symmetricPair(pairs: number): Line {
     return line(

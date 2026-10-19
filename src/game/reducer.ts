@@ -10,6 +10,7 @@ import {
   weave,
 } from './fabricOps';
 import { addNotes, neutralize, noteForPurchase, observe } from './lab';
+import { converge } from './multiverseOps';
 import { narrative, type Line } from './narrative';
 import { buyResearch, isTreeComplete } from './research';
 import { syncTutorial } from './tutorial';
@@ -57,7 +58,9 @@ function apply(state: GameState, action: GameAction): GameState {
     case 'dilate':
       return activateDilation(state);
     case 'stitch':
-      return stitchTear(state);
+      return stitchTear(state, action.currency ?? 'threads');
+    case 'converge':
+      return converge(state);
     case 'threadUpgrade':
       return buyThreadUpgrade(state, action.id);
     case 'resolve':
