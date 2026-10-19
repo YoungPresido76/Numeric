@@ -1,25 +1,23 @@
-# Numeric 0.7.0 - files changed since 0.6.0
+# Numeric 0.8.0 - files changed since 0.7.0
 
-Adds Phase 8a: Multiverse foundation (A14, part 1 of 5): Converge and Shards.
+Adds Phase 8b: Convergence Chamber and Variance 1, The Entropy Paradox (A14, part 2 of 5).
+Built on your refined HUD. Apply 0.7.0 first, then this.
 
 NEW (4):
-  src/game/multiverse.ts, src/game/multiverseOps.ts
-  src/components/MultiversePanel.tsx, src/components/PlanesPanel.tsx
+  src/game/variance.ts, src/game/varianceOps.ts
+  src/components/ChamberCard.tsx, src/components/VarianceBanner.tsx
 
-CHANGED (16, plus this file):
-  package.json (0.7.0), README.md
-  src/game/types.ts, data.ts, engine.ts, fabricOps.ts, narrative.ts, reducer.ts, save.ts
-  src/hooks/useGame.tsx
-  src/App.tsx
-  src/components/TabBar.tsx, TearAlert.tsx, SummaryModal.tsx, CollapsePanel.tsx, icons.tsx
+CHANGED (17, plus this file):
+  package.json (0.8.0), README.md
+  src/game/types.ts, data.ts, multiverse.ts, engine.ts, lab.ts, narrative.ts, reducer.ts, save.ts, sim.ts
+  src/hooks/useGame.tsx, src/App.tsx
+  src/components/MultiversePanel.tsx, PlanesPanel.tsx, SummaryModal.tsx, AlertStack.tsx
 
 Notes:
-  - The Multiverse opens after 2 Weaves and stays open (a Converge wipes the Weave count, so having converged once is enough).
-  - Converge wipes the whole Fabric and pays floor(sqrt(Threads drawn since the last Converge / 20)) Shards. It pays no Echoes.
-  - A Tear can be stitched with 1 Shard once the Multiverse is open.
-  - The Fabric tab is relabelled Planes once the Multiverse opens, and holds a Fabric / Multiverse switch.
-  - Saves from 0.6.x load unchanged (multiverse defaults to empty; the unlock follows from the Weave count).
-  - Needs the lucide-react icons Atom and Gem (both in 0.469).
-  - Built on your refined HUD (AlertStack, InfoFab, NewsTicker, new Stage/Orb/ExperimentDock/NoticeBar). None of those files are touched.
-    Only App.tsx and TabBar.tsx overlap with your edits; both were merged by hand and keep your layout (ticker, AlertStack, InfoFab, no System tab).
-  - The Tear alert you moved into AlertStack picks up the new Shard stitch button automatically.
+  - Variances are entered from the Multiverse tab, only at the start of a lab (nothing bought yet). Leaving is allowed any time and loses the streak.
+  - The Entropy Paradox: stability drains x3, production bleeds stability (0.0025/s per power of ten of ψ/s), experiment clocks +30%, a completed experiment restores x2 stability.
+  - Clear it by closing 5 labs inside it. Any ending counts except a black hole, which resets the streak but keeps you inside.
+  - Clearing pays 4 Shards once, exits the chamber and unlocks automated Tear stitching (Off / Threads only / Threads, then a Shard).
+  - The plan's "observe within 5 s for +30% success" no longer exists with task-based experiments, so the paradox was adapted to clocks and stability instead.
+  - AlertStack.tsx (your file) got one added line: the VarianceBanner under the ZoneBanner. App.tsx got three added props. Nothing else of yours is touched.
+  - Saves from 0.7.x load unchanged (no Variance running, nothing cleared, stitching off).
