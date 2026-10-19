@@ -35,6 +35,7 @@ import {
 } from './fabric';
 import { createHistory, createLab, addNotes, riskMultiplier, zoneOf } from './lab';
 import { createMultiverse, shardsFor } from './multiverse';
+import { closeVariance, VARIANCE_BY_ID } from './variance';
 import { clampFinite, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
 import { createResearch, researchBonuses } from './research';
@@ -548,11 +549,16 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
         echoes: outcome === 'published' ? Math.round(payout.base * payout.mult) : 0,
         threads,
       });
-  const multiverse = {
+  const banked = {
+    ...state.multiverse,
     shards: state.multiverse.shards + shards,
     shardsEarned: state.multiverse.shardsEarned + shards,
     converges: state.multiverse.converges + (converged ? 1 : 0),
   };
+  // A lab closed inside a Variance counts toward its streak unless a black hole took it.
+  const variance = closeVariance(banked, outcome === 'blackHole');
+  const multiverse = variance.multiverse;
+  const varianceName = state.multiverse.active === null ? '' : VARIANCE_BY_ID[state.multiverse.active].name;
 
   const summary: RunSummary = {
     outcome,
@@ -570,6 +576,7 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     echoesEarned: earned,
     threadsEarned: threads,
     shardsEarned: shards,
+    varianceCleared: variance.cleared,
     tapped: run.tapped,
     byTier: [...run.byTier],
     history: state.history.samples.slice(),
@@ -588,6 +595,13 @@ export function closeLab(state: GameState, outcome: LabOutcome): GameState {
     narrative.labOpened(closed + 1, state.lab.nextId),
   ];
   if (closing.paired) lines.push(narrative.symmetricPair(closing.fabric.pairs));
+  if (variance.cleared !== null) {
+    lines.push(narrative.varianceCleared(varianceName, VARIANCE_BY_ID[variance.cleared].rewardShards));
+  } else if (variance.broken) {
+    lines.push(narrative.varianceBroken(varianceName));
+  } else if (state.multiverse.active !== null && outcome !== 'blackHole') {
+    lines.push(narrative.varianceProgress(varianceName, multiverse.streak, VARIANCE_BY_ID[state.multiverse.active].goal));
+  }
   if (state.fabric.weaves < MULTIVERSE_UNLOCK_WEAVES && closing.fabric.weaves >= MULTIVERSE_UNLOCK_WEAVES) {
     lines.push(narrative.multiverseOpened());
   }

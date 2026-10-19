@@ -216,6 +216,19 @@ export const MULTIVERSE_UNLOCK_WEAVES = 2;
 /** Converge: Shards = floor(sqrt(Threads drawn since the last Converge / SHARD_DIVISOR)). */
 export const SHARD_DIVISOR = 20;
 
+/** Labs a Variance must be survived for, without a single black hole. */
+export const VARIANCE_GOAL = 5;
+/** Shards paid when the Entropy Paradox is cleared (labelled Chrono-Shards). */
+export const ENTROPY_REWARD_SHARDS = 4;
+/** The Entropy Paradox: stability drain is multiplied by this. */
+export const ENTROPY_DRAIN_MULT = 3;
+/** Passive production itself bleeds this much stability per second for every factor of ten of ψ/s. */
+export const ENTROPY_PASSIVE_DRAIN = 0.0025;
+/** Task clocks are this much longer: the stand-in for the old observation bonus. */
+export const ENTROPY_TASK_CLOCK = 1.3;
+/** A completed experiment restores this many times the usual stability. */
+export const ENTROPY_SUCCESS_MULT = 2;
+
 /** Ancestral Legacy: Echo Memory adds this share of your best lab's Echoes to every Collapse. */
 export const ECHO_MEMORY_FRACTION = 0.1;
 /** Each Symmetric Pair adds this to production, up to SYMMETRIC_MAX pairs. */

@@ -40,6 +40,7 @@ import {
 import { clamp, formatNumber } from './math';
 import { narrative, type Line } from './narrative';
 import { researchBonuses } from './research';
+import { varianceMods } from './variance';
 import type {
   Experiment,
   GameState,
@@ -273,7 +274,8 @@ function withClock(task: Task, mult: number): Task {
 function makeTask(s: GameState, ps: number, costs: readonly number[]): Task {
   const bonuses = researchBonuses(s.research);
   const task = rollTask(s, ps, costs);
-  return bonuses.taskTime === 1 ? task : withClock(task, bonuses.taskTime);
+  const clock = bonuses.taskTime * varianceMods(s.multiverse.active).taskClock;
+  return clock === 1 ? task : withClock(task, clock);
 }
 
 function rollTask(s: GameState, ps: number, costs: readonly number[]): Task {
@@ -404,7 +406,8 @@ function resolveExperiment(
     s.runAmplitude += payout;
     s.stats.totalAmplitude += payout;
     lab.run.successes += 1;
-    shiftStability(s, SUCCESS_STABILITY + bonuses.successStability, experiment.tier);
+    const restore = (SUCCESS_STABILITY + bonuses.successStability) * varianceMods(s.multiverse.active).successMult;
+    shiftStability(s, restore, experiment.tier);
     addNote(s, narrative.success(experiment.tier, outcome.surge, lab.nextId));
     return;
   }
@@ -536,9 +539,11 @@ export function stepLab(state: GameState, dt: number, ps: number, costs: readonl
   // A Dilated Time window doubles the drain and always counts as one open failure.
   const dilated = s.fabric.dilation.activeLeft > 0;
   const draining = lab.failures.length + lab.festering + (dilated ? DILATION_BASE_DRAIN : 0);
-  if (draining > 0) {
-    shiftStability(s, -draining * DRAIN_PER_FAILURE * (dilated ? DILATION_DRAIN_MULT : 1) * dt, null);
-  }
+  const mods = varianceMods(s.multiverse.active);
+  const drain =
+    (draining > 0 ? draining * DRAIN_PER_FAILURE * (dilated ? DILATION_DRAIN_MULT : 1) * mods.drainMult : 0) +
+    mods.passiveDrain(ps);
+  if (drain > 0) shiftStability(s, -drain * dt, null);
 
   while (lab.grants < GRANT_MILESTONES.length && s.runAmplitude >= (GRANT_MILESTONES[lab.grants] ?? Infinity)) {
     addNote(s, narrative.grant(lab.grants, lab.nextId));
@@ -548,12 +553,12 @@ export function stepLab(state: GameState, dt: number, ps: number, costs: readonl
   const zoneAfter = zoneOf(lab.stability);
   const idleTick = Math.floor(lab.run.seconds / IDLE_NOTE_SECONDS) > Math.floor((lab.run.seconds - dt) / IDLE_NOTE_SECONDS);
   if (idleTick && zoneAfter === 'stable' && lab.run.seconds > IDLE_NOTE_SECONDS) {
-    addNote(s, narrative.idle(lab.nextId));
+    addNote(s, narrative.idle(lab.nextId, s.multiverse.active));
   }
   if (zoneRank(zoneAfter) > zoneRank(zoneBefore)) {
-    if (zoneAfter === 'strained') addNote(s, narrative.strained(lab.lastCause));
-    else if (zoneAfter === 'critical') addNote(s, narrative.critical(lab.lastCause));
-    else addNote(s, narrative.imminent());
+    if (zoneAfter === 'strained') addNote(s, narrative.strained(lab.lastCause, s.multiverse.active));
+    else if (zoneAfter === 'critical') addNote(s, narrative.critical(lab.lastCause, s.multiverse.active));
+    else addNote(s, narrative.imminent(s.multiverse.active));
   } else if (zoneRank(zoneBefore) >= 2 && zoneRank(zoneAfter) <= 1) {
     addNote(s, narrative.stabilised());
   }

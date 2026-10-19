@@ -11,6 +11,7 @@ import {
 } from './fabricOps';
 import { addNotes, neutralize, noteForPurchase, observe } from './lab';
 import { converge } from './multiverseOps';
+import { enterVariance, leaveVariance, setAutoStitch } from './varianceOps';
 import { narrative, type Line } from './narrative';
 import { buyResearch, isTreeComplete } from './research';
 import { syncTutorial } from './tutorial';
@@ -61,6 +62,12 @@ function apply(state: GameState, action: GameAction): GameState {
       return stitchTear(state, action.currency ?? 'threads');
     case 'converge':
       return converge(state);
+    case 'enterVariance':
+      return enterVariance(state, action.id);
+    case 'leaveVariance':
+      return leaveVariance(state);
+    case 'autoStitch':
+      return setAutoStitch(state, action.mode);
     case 'threadUpgrade':
       return buyThreadUpgrade(state, action.id);
     case 'resolve':

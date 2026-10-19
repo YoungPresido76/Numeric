@@ -1,6 +1,6 @@
 import { BUILDINGS, PROJECT_NAMES } from './data';
 import { formatNumber } from './math';
-import type { NoteTone, ProjectTier, Task, Tier, TreeId, Zone } from './types';
+import type { NoteTone, ProjectTier, Task, Tier, TreeId, VarianceId, Zone } from './types';
 
 /** One notebook line before it is given an id. The text already carries its [ LABEL: ] tag. */
 export interface Line {
@@ -134,7 +134,20 @@ export const narrative = {
   },
 
   /** An unprompted line while the lab is stable. */
-  idle(salt: number): Line {
+  idle(salt: number, variance: VarianceId | null = null): Line {
+    if (variance === 'entropy') {
+      return line(
+        pick(
+          [
+            'Entropy is behaving. For now. Every number we make is borrowing against the quiet. - Vey',
+            'The paradox is patient. So are we. Keep the clocks honest. - Vey',
+          ],
+          salt,
+        ),
+        'info',
+        'LAB-NOTE',
+      );
+    }
     return line(
       pick(
         [
@@ -221,17 +234,26 @@ export const narrative = {
     );
   },
 
-  strained(cause: ProjectTier | null): Line {
+  strained(cause: ProjectTier | null, variance: VarianceId | null = null): Line {
+    if (variance === 'entropy') {
+      return line('The paradox is leaking. Output is eating the margin it was built on. Keeping an eye on it. - Vey', 'warn', 'MEMO');
+    }
     const subject = cause === null ? 'Readings' : READINGS[cause];
     return line(`${subject} came in late again. Keeping an eye on it. - Vey`, 'warn', 'MEMO');
   },
 
-  critical(cause: ProjectTier | null): Line {
+  critical(cause: ProjectTier | null, variance: VarianceId | null = null): Line {
+    if (variance === 'entropy') {
+      return line('Output itself is becoming noise. Neutralize now, before it cascades.', 'alert', 'ALERT');
+    }
     const subject = cause === null ? 'Project' : PROJECT_SHORT[cause];
     return line(`${subject} funding is bleeding out fast. Need to neutralize this before it spreads.`, 'alert', 'ALERT');
   },
 
-  imminent(): Line {
+  imminent(variance: VarianceId | null = null): Line {
+    if (variance === 'entropy') {
+      return line('Entropy is winning. The record is unspooling. Brace for reset.', 'alert', 'WARNING');
+    }
     return line('Containment is failing. Brace for reset.', 'alert', 'WARNING');
   },
 
@@ -306,6 +328,39 @@ export const narrative = {
   multiverseOpened(): Line {
     return line(
       'Two weaves on the record, and the Fabric has started to fold back on itself. Somewhere past it, other labs are running. We could converge. - Vey',
+      'good',
+      'LAB-NOTE',
+    );
+  },
+
+  /** A Variance was entered from the Convergence Chamber. */
+  varianceEntered(name: string, goal: number): Line {
+    return line(
+      `Entered ${name}. Close ${goal} labs in a row without a black hole and it lets go. - Vey`,
+      'warn',
+      'LAB-NOTE',
+    );
+  },
+
+  /** The player left a Variance by choice. */
+  varianceLeft(name: string): Line {
+    return line(`Left ${name}. The streak is lost; the Chamber will still be here. - Vey`, 'info', 'LOG');
+  },
+
+  /** A lab closed inside a Variance and counted toward its streak. */
+  varianceProgress(name: string, streak: number, goal: number): Line {
+    return line(`${name}: ${streak} of ${goal} labs held. - Vey`, 'good', 'LOG');
+  },
+
+  /** A black hole broke the streak. */
+  varianceBroken(name: string): Line {
+    return line(`${name} swallowed the lab. The streak is back to zero, but we are still inside. - Vey`, 'alert', 'ALERT');
+  },
+
+  /** The Variance was cleared. */
+  varianceCleared(name: string, shards: number): Line {
+    return line(
+      `${name} cleared. It paid ${shards} ${shards === 1 ? 'Shard' : 'Shards'} and gave something back: stitching can now run itself. - Vey`,
       'good',
       'LAB-NOTE',
     );

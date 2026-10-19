@@ -8,6 +8,7 @@ import {
   RESEARCH_TREES,
   SYMMETRIC_MAX,
   TEAR_LAYER_CAP,
+  VARIANCE_GOAL,
   WAVE_STORE_CAP,
   ZONES,
   isUpgradeId,
@@ -18,6 +19,7 @@ import { createFabric } from './fabric';
 import { createHistory, createLab, createRunStats } from './lab';
 import { clamp, clampFinite } from './math';
 import { subCap } from './research';
+import { isVarianceId } from './variance';
 import type {
   AutobuyerSet,
   AutobuyerState,
@@ -45,6 +47,7 @@ import type {
   TreeState,
   Triple,
   UpgradeId,
+  VarianceId,
   Zone,
 } from './types';
 
@@ -288,6 +291,7 @@ function readSummary(value: unknown): RunSummary | null {
     echoesEarned: readCount(value['echoesEarned']),
     threadsEarned: readCount(value['threadsEarned']),
     shardsEarned: readCount(value['shardsEarned']),
+    varianceCleared: isVarianceId(value['varianceCleared']) ? value['varianceCleared'] : null,
     tapped: readNumber(value['tapped'], 0),
     byTier: readQuad(value['byTier'], false),
     history: readSamples(value['history'], HISTORY_MAX_SAMPLES),
@@ -361,11 +365,24 @@ function readFabric(value: unknown): FabricState {
 function readMultiverse(value: unknown): MultiverseState {
   const src = isRecord(value) ? value : {};
   const shardsEarned = readCount(src['shardsEarned']);
+  const cleared: VarianceId[] = [];
+  if (Array.isArray(src['cleared'])) {
+    for (const entry of src['cleared'] as unknown[]) {
+      if (isVarianceId(entry) && !cleared.includes(entry)) cleared.push(entry);
+    }
+  }
+  const active = isVarianceId(src['active']) && !cleared.includes(src['active']) ? src['active'] : null;
+  const mode = src['autoStitch'];
   return {
     // Spendable Shards can never exceed what was ever earned.
     shards: Math.min(readCount(src['shards']), shardsEarned),
     shardsEarned,
     converges: readCount(src['converges']),
+    active,
+    streak: active === null ? 0 : Math.min(readCount(src['streak']), VARIANCE_GOAL - 1),
+    cleared,
+    // Automatic stitching only exists once the Entropy Paradox is cleared.
+    autoStitch: cleared.includes('entropy') && (mode === 'threads' || mode === 'any') ? mode : 'off',
   };
 }
 

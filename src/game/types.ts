@@ -80,6 +80,12 @@ export type NoteTone = 'info' | 'good' | 'warn' | 'alert';
 
 export type LabOutcome = 'published' | 'blackHole' | 'woven' | 'converged';
 
+/** An altered timeline that can be run through the Convergence Chamber. */
+export type VarianceId = 'entropy';
+
+/** Automatic Tear stitching: off, Threads only, or Threads and then Shards. */
+export type AutoStitchMode = 'off' | 'threads' | 'any';
+
 /** What a Continuum Tear is stitched closed with. */
 export type StitchCurrency = 'threads' | 'shards';
 
@@ -130,10 +136,18 @@ export interface FabricState {
 export interface MultiverseState {
   /** Spendable Shards. */
   shards: number;
-  /** Shards earned over all Converges. Gates the Super-String Canopy. */
+  /** Shards earned over all Converges and Variances. Gates the Super-String Canopy. */
   shardsEarned: number;
   /** Times the Fabric has been converged. */
   converges: number;
+  /** The altered timeline running in the Convergence Chamber, if any. */
+  active: VarianceId | null;
+  /** Labs closed inside the active Variance without a black hole. */
+  streak: number;
+  /** Variances that have been cleared. */
+  cleared: VarianceId[];
+  /** Whether a Continuum Tear stitches itself, once that has been unlocked. */
+  autoStitch: AutoStitchMode;
 }
 
 export interface SurgeState {
@@ -298,6 +312,8 @@ export interface RunSummary {
   threadsEarned: number;
   /** Shards paid by a Converge. Zero for any other ending. */
   shardsEarned: number;
+  /** The Variance this lab cleared, if it was the one that finished it. */
+  varianceCleared: VarianceId | null;
   tapped: number;
   byTier: Quad;
   history: HistorySample[];
@@ -436,6 +452,9 @@ export type GameAction =
   | { type: 'dilate' }
   | { type: 'stitch'; currency?: StitchCurrency }
   | { type: 'converge' }
+  | { type: 'enterVariance'; id: VarianceId }
+  | { type: 'leaveVariance' }
+  | { type: 'autoStitch'; mode: AutoStitchMode }
   | { type: 'threadUpgrade'; id: ThreadUpgradeId }
   | { type: 'resolve' }
   | { type: 'surge' }

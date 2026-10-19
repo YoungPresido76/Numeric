@@ -2,7 +2,7 @@ import { MULTIVERSE_UNLOCK_WEAVES, SHARD_DIVISOR } from './data';
 import type { GameState, MultiverseState } from './types';
 
 export function createMultiverse(): MultiverseState {
-  return { shards: 0, shardsEarned: 0, converges: 0 };
+  return { shards: 0, shardsEarned: 0, converges: 0, active: null, streak: 0, cleared: [], autoStitch: 'off' };
 }
 
 /**

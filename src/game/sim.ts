@@ -2,6 +2,7 @@ import { newlyOwned, runAutobuyers } from './autorun';
 import { advance, buildingCost, closeLab, derive } from './engine';
 import { noteForPurchase, stepLab } from './lab';
 import type { GameState, Tier } from './types';
+import { autoStitchTear } from './varianceOps';
 
 const TIERS: readonly Tier[] = [0, 1, 2, 3];
 
@@ -19,9 +20,10 @@ export function step(state: GameState, dt: number): GameState {
   const derived = derive(produced);
   const costs = TIERS.map((tier) => buildingCost(tier, produced.bought[tier], 1, derived.costDiscount, derived.growth[tier]));
   const result = stepLab(produced, dt, derived.psPerSecond, costs);
+  const stitched = result.blackHole ? result.state : autoStitchTear(result.state);
   const stepped: GameState = {
-    ...result.state,
-    stats: { ...result.state.stats, playSeconds: result.state.stats.playSeconds + dt },
+    ...stitched,
+    stats: { ...stitched.stats, playSeconds: stitched.stats.playSeconds + dt },
   };
   return result.blackHole ? closeLab(stepped, 'blackHole') : stepped;
 }
