@@ -2,12 +2,12 @@ import { useState, type CSSProperties, type ReactElement } from 'react';
 import { AlertStack } from './components/AlertStack';
 import { BuildingsPanel } from './components/BuildingsPanel';
 import { CollapsePanel } from './components/CollapsePanel';
-import { FabricPanel } from './components/FabricPanel';
 import { InfoFab, type SheetTab } from './components/InfoFab';
 import { IntroSequence } from './components/IntroSequence';
 import { LabPanel } from './components/LabPanel';
 import { NewsTicker } from './components/NewsTicker';
 import { OfflineModal } from './components/OfflineModal';
+import { PlanesPanel } from './components/PlanesPanel';
 import { Stage } from './components/Stage';
 import { SummaryModal } from './components/SummaryModal';
 import { TabBar, type TabId } from './components/TabBar';
@@ -19,6 +19,7 @@ import { canAffordAutobuyer } from './game/autobuyers';
 import { echoGain, isUpgradeVisible } from './game/engine';
 import { fabricUnlocked } from './game/fabric';
 import { canWeave } from './game/fabricOps';
+import { canConverge, multiverseUnlocked } from './game/multiverse';
 import { clamp } from './game/math';
 import { canAffordResearch } from './game/research';
 import { TUTORIAL_STEPS } from './game/tutorial';
@@ -46,9 +47,10 @@ export default function App(): ReactElement {
       UPGRADES.some((u) => isUpgradeVisible(state, u) && state.amplitude >= u.cost) || canAffordResearch(state),
     lab: state.lab.experiments.length > 0 || state.lab.failures.length > 0,
     collapse: echoGain(state.runAmplitude) >= 1 || canAffordAutobuyer(state),
-    fabric: canWeave(state),
+    fabric: canWeave(state) || canConverge(state),
   };
   const showFabric = fabricUnlocked(state);
+  const showPlanes = multiverseUnlocked(state);
 
   let panel: ReactElement;
   switch (tab) {
@@ -82,13 +84,14 @@ export default function App(): ReactElement {
       break;
     case 'fabric':
       panel = (
-        <FabricPanel
+        <PlanesPanel
           state={state}
           onWeave={actions.weave}
           onDecoherence={actions.buyDecoherence}
           onWormhole={actions.installWormhole}
           onDilate={actions.dilate}
           onThreadUpgrade={actions.buyThreadUpgrade}
+          onConverge={actions.converge}
         />
       );
       break;
@@ -116,7 +119,7 @@ export default function App(): ReactElement {
           {panel}
         </main>
 
-        <TabBar active={tab} onSelect={setTab} hintTab={hintTab} badges={badges} showFabric={showFabric} />
+        <TabBar active={tab} onSelect={setTab} hintTab={hintTab} badges={badges} showFabric={showFabric} showPlanes={showPlanes} />
 
         <AlertStack snapshot={snapshot} actions={actions} />
         <InfoFab snapshot={snapshot} actions={actions} sheet={sheet} onSheet={setSheet} />
