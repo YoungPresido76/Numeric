@@ -92,6 +92,9 @@ export default function App(): ReactElement {
           onDilate={actions.dilate}
           onThreadUpgrade={actions.buyThreadUpgrade}
           onConverge={actions.converge}
+          onEnterVariance={actions.enterVariance}
+          onLeaveVariance={actions.leaveVariance}
+          onAutoStitch={actions.setAutoStitch}
         />
       );
       break;
